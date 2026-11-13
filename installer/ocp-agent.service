@@ -1,0 +1,15 @@
+[Unit]
+Description=OrangeCatPanel host agent (Unix socket action whitelist)
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+ExecStart=/opt/OrangeCatPanel/bin/ocp-agent --sock /run/ocp/agent.sock --audit /var/log/ocp/agent-audit.jsonl
+Restart=on-failure
+RestartSec=3
+RuntimeDirectory=ocp
+LogsDirectory=ocp
+
+[Install]
+WantedBy=multi-user.target

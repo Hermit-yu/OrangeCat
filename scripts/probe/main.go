@@ -23,7 +23,7 @@ func call(sock, action string) {
 	var resp map[string]any
 	dec.Decode(&resp)
 	b, _ := json.Marshal(resp)
-	fmt.Printf("=== %s ===\n% .300s\n", action, string(b))
+	fmt.Printf("=== %s ===\n%s\n", action, string(b))
 }
 
 func main() {
