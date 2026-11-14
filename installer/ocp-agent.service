@@ -9,7 +9,11 @@ ExecStart=/opt/OrangeCatPanel/bin/ocp-agent --sock /run/ocp/agent.sock --audit /
 Restart=on-failure
 RestartSec=3
 RuntimeDirectory=ocp
+RuntimeDirectoryMode=0750
 LogsDirectory=ocp
+LogsDirectoryMode=0750
+Group=ocp-agent
+UMask=0027
 
 [Install]
 WantedBy=multi-user.target

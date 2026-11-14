@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -16,7 +18,7 @@ import (
 // All handlers read REAL host state. No cached/panel-side values are returned.
 
 // SystemInfo: hostname, distro, kernel, uptime.
-func SystemInfo(_ map[string]any) (map[string]any, error) {
+func SystemInfo(ctx context.Context, _ map[string]any) (map[string]any, error) {
 	data := map[string]any{}
 	if fi, err := os.ReadFile("/proc/sys/kernel/hostname"); err == nil {
 		data["hostname"] = strings.TrimSpace(string(fi))
@@ -43,7 +45,7 @@ func SystemInfo(_ map[string]any) (map[string]any, error) {
 	}
 	arch, _ := os.ReadFile("/proc/sys/kernel/arch")
 	if len(arch) == 0 {
-		out, err := exec.Command("uname", "m").Output()
+		out, err := exec.CommandContext(ctx, "uname", "m").Output()
 		if err == nil {
 			data["arch"] = strings.TrimSpace(string(out))
 		} else {
@@ -56,13 +58,17 @@ func SystemInfo(_ map[string]any) (map[string]any, error) {
 }
 
 // SystemMetrics: CPU, memory, disk, load — read directly from /proc.
-func SystemMetrics(_ map[string]any) (map[string]any, error) {
+func SystemMetrics(ctx context.Context, _ map[string]any) (map[string]any, error) {
 	data := map[string]any{}
 
 	// CPU: /proc/stat first line; sample twice 250ms apart for utilization.
 	type cpuSample struct{ idle, total uint64 }
 	if c1, ok1 := readCPUStat(); ok1 {
-		time.Sleep(250 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(250 * time.Millisecond):
+		}
 		if c2, ok2 := readCPUStat(); ok2 {
 			idleDelta := c2.idle - c1.idle
 			totalDelta := c2.total - c1.total
@@ -115,32 +121,38 @@ func SystemMetrics(_ map[string]any) (map[string]any, error) {
 			break
 		}
 	}
-	out, err := exec.Command("df", "-B1", "--output=size,avail,total", "/").Output()
+	out, err := exec.CommandContext(ctx, "df", "-B1", "--output=size,used,avail", "/").Output()
 	if err == nil {
-		lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-		if len(lines) == 2 {
-			var total, avail uint64
-			fmt.Sscanf(lines[1], "%d %d %d", &avail, &total, nil)
-			// df -B1 --output=size,avail,total: header then "total avail (unused)" — parse via fields
-			f := strings.Fields(lines[1])
-			if len(f) == 3 {
-				total, _ = strconv.ParseUint(f[0], 10, 64)
-				avail, _ = strconv.ParseUint(f[1], 10, 64)
-				_ = total
-				_ = avail
-				// re-read correct order: size,avail,total
-				total, _ = strconv.ParseUint(f[2], 10, 64)
-				avail, _ = strconv.ParseUint(f[1], 10, 64)
-				used := total - avail
-				if total > 0 {
-					data["disk_total_gb"] = total / 1024 / 1024 / 1024
-					data["disk_used_gb"] = used / 1024 / 1024 / 1024
-					data["disk_used_percent"] = round1(100.0 * float64(used) / float64(total))
-				}
-			}
+		if total, used, parseErr := parseDFOutput(string(out)); parseErr == nil {
+			data["disk_total_gb"] = total / 1024 / 1024 / 1024
+			data["disk_used_gb"] = used / 1024 / 1024 / 1024
+			data["disk_used_percent"] = round1(100.0 * float64(used) / float64(total))
 		}
 	}
 	return data, nil
+}
+
+func parseDFOutput(output string) (totalBytes, usedBytes uint64, err error) {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) != 2 {
+		return 0, 0, fmt.Errorf("df output must have header and one data row")
+	}
+	fields := strings.Fields(lines[1])
+	if len(fields) != 3 {
+		return 0, 0, fmt.Errorf("df data row must contain size, used, available")
+	}
+	totalBytes, err = strconv.ParseUint(fields[0], 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	usedBytes, err = strconv.ParseUint(fields[1], 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	if totalBytes == 0 || usedBytes > totalBytes {
+		return 0, 0, fmt.Errorf("invalid df size values")
+	}
+	return totalBytes, usedBytes, nil
 }
 
 func readCPUStat() (c struct{ idle, total uint64 }, ok bool) {
@@ -178,9 +190,9 @@ func parseKB(line string) uint64 {
 func round1(f float64) float64 { return float64(int64(f*10+0.5)) / 10 }
 
 // DockerSummary: counts + health of containers/images/volumes via docker CLI (fixed args only).
-func DockerSummary(_ map[string]any) (map[string]any, error) {
+func DockerSummary(ctx context.Context, _ map[string]any) (map[string]any, error) {
 	data := map[string]any{}
-	out, err := exec.Command("docker", "info", "--format", "{{.Containers}} {{.Images}}").Output()
+	out, err := exec.CommandContext(ctx, "docker", "info", "--format", "{{.Containers}} {{.Images}}").Output()
 	if err != nil {
 		data["available"] = false
 		data["error"] = err.Error()
@@ -192,7 +204,7 @@ func DockerSummary(_ map[string]any) (map[string]any, error) {
 		data["images"] = fields[1]
 	}
 	data["available"] = true
-	if out, err := exec.Command("docker", "volume", "ls", "-q").Output(); err == nil {
+	if out, err := exec.CommandContext(ctx, "docker", "volume", "ls", "-q").Output(); err == nil {
 		vol := strings.Split(strings.TrimSpace(string(out)), "\n")
 		data["volumes"] = len(vol)
 	}
@@ -200,8 +212,8 @@ func DockerSummary(_ map[string]any) (map[string]any, error) {
 }
 
 // DockerContainers: live container list with state.
-func DockerContainers(p map[string]any) (map[string]any, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+func DockerContainers(ctx context.Context, p map[string]any) (map[string]any, error) {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, "docker", "ps", "-a", "--format",
 		`{"name":"{{.Names}}","state":"{{.State}}","status":"{{.Status}}","image":"{{.Image}}","ports":"{{.Ports}}"}`).Output()
@@ -225,7 +237,7 @@ func DockerContainers(p map[string]any) (map[string]any, error) {
 }
 
 // NginxSites: scan /home/web/conf.d and /etc/nginx/conf.d for server_name entries.
-func NginxSites(_ map[string]any) (map[string]any, error) {
+func NginxSites(ctx context.Context, _ map[string]any) (map[string]any, error) {
 	dirs := []string{"/home/web/conf.d", "/etc/nginx/conf.d", "/etc/nginx/sites-enabled"}
 	var sites []map[string]any
 	for _, dir := range dirs {
@@ -234,6 +246,9 @@ func NginxSites(_ map[string]any) (map[string]any, error) {
 			continue
 		}
 		for _, e := range entries {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
 			if e.IsDir() || !strings.HasSuffix(e.Name(), ".conf") {
 				continue
 			}
@@ -246,9 +261,9 @@ func NginxSites(_ map[string]any) (map[string]any, error) {
 			names := extractServerNames(content)
 			certInfo := extractCertPaths(content)
 			sites = append(sites, map[string]any{
-				"file": full,
-				"names":  names,
-				"certs":  certInfo,
+				"file":  full,
+				"names": names,
+				"certs": certInfo,
 			})
 		}
 	}
@@ -286,7 +301,7 @@ func extractCertPaths(content string) map[string]string {
 }
 
 // NetInterfaces: rx/tx byte counters per interface from /sys.
-func NetInterfaces(_ map[string]any) (map[string]any, error) {
+func NetInterfaces(ctx context.Context, _ map[string]any) (map[string]any, error) {
 	entries, err := os.ReadDir("/sys/class/net")
 	if err != nil {
 		return nil, err
@@ -317,12 +332,19 @@ func NetInterfaces(_ map[string]any) (map[string]any, error) {
 }
 
 // Processes: top-N by RSS from /proc/<pid>/stat.
-func Processes(p map[string]any) (map[string]any, error) {
+func Processes(ctx context.Context, p map[string]any) (map[string]any, error) {
 	topN := 20
-	if p["top"] != nil {
-		if f, ok := p["top"].(float64); ok {
-			topN = int(f)
+	for key := range p {
+		if key != "top" {
+			return nil, fmt.Errorf("unsupported process query parameter")
 		}
+	}
+	if raw, exists := p["top"]; exists {
+		value, ok := raw.(float64)
+		if !ok || math.IsNaN(value) || math.IsInf(value, 0) || value != math.Trunc(value) || value < 1 || value > 100 {
+			return nil, fmt.Errorf("process top limit must be an integer from 1 to 100")
+		}
+		topN = int(value)
 	}
 	entries, err := os.ReadDir("/proc")
 	if err != nil {
@@ -335,6 +357,9 @@ func Processes(p map[string]any) (map[string]any, error) {
 	}
 	var procs []proc
 	for _, e := range entries {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		pid, err := strconv.Atoi(e.Name())
 		if err != nil {
 			continue
@@ -358,13 +383,7 @@ func Processes(p map[string]any) (map[string]any, error) {
 		procs = append(procs, proc{pid, procName, rssPages * 4.0 / 1024})
 	}
 	// sort desc by rss
-	for i := 0; i < len(procs); i++ {
-		for j := i + 1; j < len(procs); j++ {
-			if procs[j].rssMB > procs[i].rssMB {
-				procs[i], procs[j] = procs[j], procs[i]
-			}
-		}
-	}
+	sort.Slice(procs, func(i, j int) bool { return procs[i].rssMB > procs[j].rssMB })
 	if len(procs) > topN {
 		procs = procs[:topN]
 	}

@@ -1,6 +1,6 @@
 # OrangeCatPanel 不变量层规则（唯一权威）
 
-> 冲突时以本文件为准；流程层见 docs/PROJECT-PLAN.md 与 skill engineering-framework。
+> 冲突时以本文件为准；产品范围见 `docs/PROJECT-PLAN.md`，执行流程见 `docs/EXECUTION-STANDARDS.md`，通用工程原则见 `engineering-framework` skill。
 
 ## 产品性质
 单管理员 Linux 运维面板。管理真实主机状态（系统/Docker/Nginx/文件/终端），从 1 台扩展到 N 台。

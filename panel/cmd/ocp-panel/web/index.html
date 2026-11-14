@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>橘猫运维面板</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style nonce="__OCP_CSP_NONCE__">
+:root{--bg:#0f1115;--card:#181b22;--tx:#d7dbe2;--dim:#8a92a0;--ok:#42c98d;--warn:#e3b34c;--err:#e35c5c;--acc:#ff8c42}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.55 system-ui,"Noto Sans CJK SC",sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid #262a33;position:sticky;top:0;background:var(--bg);z-index:9}
+header h1{font-size:16px;margin:0;color:var(--acc)}header .dim{color:var(--dim);font-size:12px}
+main{padding:16px 20px;max-width:1200px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid #232833;border-radius:10px;padding:14px 16px}
+.card h2{font-size:13px;color:var(--dim);margin:0 0 6px;text-transform:uppercase;letter-spacing:.04em}
+.card .big{font-size:24px;font-weight:600}
+.card .sub{color:var(--dim);font-size:12px;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{color:var(--dim);text-align:left;font-weight:500;padding:6px 8px;border-bottom:1px solid #232833}
+td{padding:6px 8px;border-bottom:1px solid #1d2129;word-break:break-all}
+.bar{display:block;width:100%;height:8px;background:#232833;border:0;border-radius:4px;overflow:hidden;margin-top:6px}
+.bar::-webkit-progress-bar{background:#232833;border-radius:4px}
+.bar::-webkit-progress-value{background:var(--acc);border-radius:4px}
+.bar::-moz-progress-bar{background:var(--acc);border-radius:4px}
+.logout-button{border:1px solid #2a3040;background:none;color:var(--dim);padding:5px 12px;border-radius:6px;cursor:pointer}
+.table-card{padding:0;overflow:auto}
+.hidden{display:none}
+#loginBox{max-width:340px;margin:80px auto;background:var(--card);border:1px solid #232833;border-radius:10px;padding:24px}
+#loginBox h1{font-size:16px;color:var(--acc);margin:0 0 12px}
+#loginBox input{width:100%;padding:8px 10px;margin:6px 0;background:#10131a;border:1px solid #2a3040;border-radius:6px;color:var(--tx)}
+#loginBox button{width:100%;padding:9px;margin-top:10px;background:var(--acc);border:0;border-radius:6px;color:#fff;font-weight:600;cursor:pointer}
+#loginErr{color:var(--err);font-size:12px;min-height:16px}
+.agentdown{background:#2a1c1c;border:1px solid var(--err);color:var(--err);padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:13px}
+section{margin-top:22px}section h2{font-size:14px;color:var(--dim);margin:0 0 10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>橘猫运维面板 <span class="dim" id="hostLabel"></span></h1>
+  <button id="btnLogout" class="dim hidden logout-button">退出登录</button>
+</header>
+
+<div id="loginBox">
+  <h1>管理员登录</h1>
+  <input id="u" value="admin" autocomplete="username">
+  <input id="p" type="password" placeholder="密码" autocomplete="current-password">
+  <button id="btnLogin">登录</button>
+  <div id="loginErr"></div>
+</div>
+
+<main id="dash" class="hidden">
+  <div id="agentDown" class="agentdown hidden">ocp-agent 当前不可达，以下为错误详情</div>
+  <div class="grid" id="overview"></div>
+  <section><h2>容器（实时）</h2><div class="card table-card"><table id="dockerT"><thead><tr><th>名称</th><th>状态</th><th>镜像</th><th>端口</th><th>详情</th></tr></thead><tbody></tbody></table></div></section>
+  <section><h2>Nginx 站点（发现优先，只读）</h2><div class="card table-card"><table id="nginxT"><thead><tr><th>server_name</th><th>配置文件</th><th>证书</th></tr></thead><tbody></tbody></table></div></section>
+  <section><h2>网卡流量计数</h2><div class="card table-card"><table id="netT"><thead><tr><th>接口</th><th>rx</th><th>tx</th></tr></thead><tbody></tbody></table></div></section>
+  <section><h2>进程 Top（按内存）</h2><div class="card table-card"><table id="procT"><thead><tr><th>PID</th><th>名称</th><th>RSS MB</th></tr></thead><tbody></tbody></table></div></section>
+</main>
+
+<script nonce="__OCP_CSP_NONCE__">
+const APP_BASE=location.pathname.startsWith("/orangecat/")?"/orangecat":"";
+function csrfCookie(){const item=document.cookie.split(";").map(v=>v.trim()).find(v=>v.startsWith("ocp_csrf="));return item?decodeURIComponent(item.slice("ocp_csrf=".length)):""}
+function postJSON(url, body){const headers={"Content-Type":"application/json"};const csrf=csrfCookie();if(url!=="/api/login"&&csrf)headers["X-CSRF-Token"]=csrf;return fetch(APP_BASE+url,{method:"POST",headers,body:JSON.stringify(body),credentials:"same-origin"}).then(r=>r.text())}
+function responseOK(text){try{return JSON.parse(text).ok===true}catch{return false}}
+function login(){postJSON("/api/login",{username:u.value,password:p.value}).then(t=>{if(responseOK(t))location.reload();else loginErr.textContent=t}).catch(e=>loginErr.textContent=e)}
+function logout(){const b=document.getElementById("btnLogout");b.disabled=true;const fail=()=>{b.textContent="退出失败，点击重试";b.disabled=false};postJSON("/api/logout",{}).then(t=>{if(responseOK(t))location.reload();else fail()}).catch(fail)}
+document.getElementById("btnLogin").addEventListener("click",login);
+document.getElementById("btnLogout").addEventListener("click",logout);
+function fmtBytes(n){if(!n&&n!==0)return"—";const u=["B","KB","MB","GB","TB"];let i=0;while(n>=1024&&i<u.length-1){n/=1024;i++}return n.toFixed(1)+" "+u[i]}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}
+
+async function refresh(){
+  const [ov,dock,ng,nx,pc]=await Promise.all(["/api/overview","/api/docker","/api/nginx","/api/net","/api/processes"].map(u=>fetch(APP_BASE+u,{credentials:"same-origin"}).then(r=>r.ok?r.json():{agent_error:"HTTP "+r.status})));
+  const o=ov.info||{},m=ov.metrics||{};
+  hostLabel.textContent=o.hostname?("· "+o.hostname+" / "+o.distro):"";
+  document.getElementById("dash").classList.remove("hidden");
+  document.getElementById("btnLogout").classList.remove("hidden");
+  loginBox.classList.add("hidden");
+
+  const errs=[];for(const k of["system.info","system.metrics"])if(ov.agent_errors&&ov.agent_errors[k])errs.push(k+":"+ov.agent_errors[k]);
+  if(errs.length)agentDown.classList.remove("hidden"),agentDown.textContent="agent 部分不可达 → "+errs.join("；");
+  else agentDown.classList.add("hidden");
+
+  const card=(t,b,s,bv)=>{const value=Math.min(100,Math.max(0,Number(bv)||0));return `<div class="card"><h2>${esc(t)}</h2><div class="big">${esc(b)}</div>${bv!==undefined?`<progress class="bar" max="100" value="${value}" aria-label="${esc(t)}使用率"></progress>`:""}<div class="sub">${esc(s||"")}</div></div>`};
+  overview.innerHTML=
+    card("CPU",(m.cpu_percent??"—")+"%",m.cpu_cores+" 核 · 负载 "+(m.load_1m??"?"),m.cpu_percent)+
+    card("内存",m.mem_used_percent??"—",`${fmtBytes((m.mem_used_mb||0)*1048576)} / ${fmtBytes((m.mem_total_mb||0)*1048576)}`,m.mem_used_percent)+
+    card("磁盘 /(ext4)",m.disk_used_percent==null?"—":`${m.disk_used_percent}%`,m.disk_used_gb==null||m.disk_total_gb==null?"磁盘数据暂不可用":`${m.disk_used_gb}G / ${m.disk_total_gb}G`,m.disk_used_percent)+
+    card("容器",(dock.summary&&dock.summary.containers)??"—",`镜像 ${dock.summary?.images??"?"} · 卷 ${dock.summary?.volumes??"?"}`)+
+    card("站点",ng.sites?(ng.sites.count??0):"—",o.hostname+" · "+o.distro)+
+    card("Uptime",o.uptime_seconds?Math.floor(o.uptime_seconds/86400)+" 天":"—","内核 "+(o.kernel||""));
+  const ctb=document.querySelector("#dockerT tbody");
+  const cs=(dock.containers&&dock.containers.containers)||[];
+  ctb.innerHTML=cs.map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.state)}</td><td>${esc(c.image)}</td><td>${esc(c.ports||"-")}</td><td class="dim">${esc(c.status)}</td></tr>`).join("")||`<tr><td colspan="5" class="dim">容器数据暂不可用：${esc(dock.agent_error||dock.containers?.agent_error||"未返回数据")}</td></tr>`;
+  const ntb=document.querySelector("#nginxT tbody");
+  const ns=(ng.sites&&ng.sites.sites)||[];
+  ntb.innerHTML=ns.map(s=>`<tr><td>${esc((s.names||[]).join(" "))}</td><td>${esc(s.file)}</td><td class="dim">${esc(s.certs?.cert||"无")}</td></tr>`).join("")||`<tr><td colspan="3" class="dim">未发现站点</td></tr>`;
+  const pnb=document.querySelector("#netT tbody");
+  const nts=(nx.interfaces&&nx.interfaces.interfaces)||[];
+  pnb.innerHTML=nts.map(n=>`<tr><td>${esc(n.name)}</td><td>${fmtBytes(n.rx_bytes)}</td><td>${fmtBytes(n.tx_bytes)}</td></tr>`).join("")||`<tr><td colspan="3" class="dim">网卡数据暂不可用</td></tr>`;
+  const ptb=document.querySelector("#procT tbody");
+  const ps=(pc.processes&&pc.processes.processes)||[];
+  ptb.innerHTML=ps.map(p=>`<tr><td>${esc(p.pid)}</td><td>${esc(p.name)}</td><td>${esc(p.rss_mb)}</td></tr>`).join("")||`<tr><td colspan="3" class="dim">进程数据暂不可用</td></tr>`;
+}
+(async()=>{const r=await fetch(APP_BASE+"/api/overview",{credentials:"same-origin"});if(r.status===401)return;refresh().catch(()=>{});setInterval(()=>refresh().catch(()=>{}),5000)})();
+</script>
+</body>
+</html>

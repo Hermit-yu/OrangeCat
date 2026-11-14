@@ -1,0 +1,35 @@
+[Unit]
+Description=OrangeCatPanel web panel
+After=network.target ocp-agent.service
+Requires=ocp-agent.service
+
+[Service]
+Type=simple
+ExecStart=/opt/OrangeCatPanel/bin/ocp-panel --addr 172.18.0.1:8390 --sock /run/ocp/agent.sock --password-file /var/lib/ocp/panel-password --trusted-proxy-file /etc/ocp-panel/trusted-proxy-ips
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+User=ocp-panel
+Group=ocp-panel
+SupplementaryGroups=ocp-agent
+UMask=0077
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+StateDirectory=ocp
+StateDirectoryMode=0700
+LogsDirectory=ocp-panel
+LogsDirectoryMode=0700
+ReadWritePaths=/var/lib/ocp /var/log/ocp-panel
+
+[Install]
+WantedBy=multi-user.target
