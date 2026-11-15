@@ -140,6 +140,12 @@ func main() {
 	mux.HandleFunc("/api/task/start", p.requireAuth(p.handleTaskStart))
 	mux.HandleFunc("/api/task/status", p.requireAuth(p.handleTaskStatus))
 	mux.HandleFunc("/api/task/log", p.requireAuth(p.handleTaskLog))
+	// P5：受控 PTY 终端（写走三重门，读走 requireAuth）
+	mux.HandleFunc("/api/pty/open", p.handlePTYOpen)
+	mux.HandleFunc("/api/pty/input", p.handlePTYInput)
+	mux.HandleFunc("/api/pty/close", p.handlePTYClose)
+	mux.HandleFunc("/api/pty/status", p.requireAuth(p.handlePTYStatus))
+	mux.HandleFunc("/api/pty/list", p.requireAuth(p.handlePTYList))
 	mux.HandleFunc("/", p.handleIndex)
 
 	srv := &http.Server{Addr: *addr, Handler: p.securityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}

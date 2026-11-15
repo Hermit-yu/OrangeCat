@@ -55,6 +55,13 @@ body{background:var(--page-ambient);color:var(--text);font:14px/1.55 var(--font)
 .sterr{color:var(--danger)}
 .strow{font-weight:600;margin:3px 0}
 .logbox{max-height:280px;overflow:auto;font-family:var(--font-mono);font-size:12px;white-space:pre-wrap;word-break:break-all}
+/* ── 受控终端（P5） ── */
+.termbox{border:1px solid var(--border);border-radius:10px;background:#12100e;padding:0;overflow:hidden;display:flex;flex-direction:column;min-height:380px}
+.termout{font-family:var(--font-mono);font-size:13px;color:#e4e1dd;background:#12100e;padding:12px 14px;flex:1;overflow-y:auto;white-space:pre-wrap;word-break:break-all;min-height:320px}
+.term-inline{display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid #2a2723;background:#181614}
+.term-prompt{color:#a28227;font-family:var(--font-mono);font-size:13px;font-weight:600}
+.terminput{flex:1;background:transparent;border:none;outline:none;color:#e4e1dd;font-family:var(--font-mono);font-size:13px}
+.terminput::placeholder{color:#6b645c}
 
 /* ── 应用外壳：侧栏 + 主区 ── */
 .app-shell{display:flex;min-height:100vh}
@@ -264,6 +271,7 @@ section .panel-card{margin-bottom:22px}
       <button class="sidebar__link" data-target="secNginx"><span class="ico">◈</span>Nginx 站点</button>
       <button class="sidebar__link" data-target="secFs"><span class="ico">⌂</span>文件管理</button>
       <button class="sidebar__link" data-target="secTask"><span class="ico">▶</span>后台任务</button>
+      <button class="sidebar__link" data-target="secTerm"><span class="ico">⌨</span>终端</button>
       <button class="sidebar__link" data-target="secNet"><span class="ico">⇄</span>网卡流量</button>
       <button class="sidebar__link" data-target="secProc"><span class="ico">⚙</span>进程</button>
       <button class="sidebar__link" data-target="secSvc"><span class="ico">◉</span>服务</button>
@@ -429,6 +437,22 @@ section .panel-card{margin-bottom:22px}
           <div class="section-head">网卡流量计数</div>
           <div class="panel-card pad0"><table id="netT"><thead><tr><th>接口</th><th>rx</th><th>tx</th></tr></thead><tbody></tbody></table></div>
         </section>
+        <!-- 受控终端（P5：默认关闭，agent 侧开关控制） -->
+        <section id="secTerm" class="view hidden">
+          <div class="section-head">受控终端</div>
+          <div class="panel-card">
+            <div class="toolbar-row">
+              <button id="btnTermOpen" class="logout-button">打开终端</button>
+              <button id="btnTermClose" class="logout-button">关闭会话</button>
+              <span id="termState" class="dim padtop">未连接（终端能力默认关闭，需 agent 启用）</span>
+            </div>
+            <div id="termBox" class="termbox hidden" tabindex="0">
+              <div id="termOut" class="termout"></div>
+              <div class="term-inline"><span class="term-prompt">$</span><input id="termIn" class="terminput" placeholder="输入命令，回车执行（Ctrl+C 中断）" autocomplete="off" spellcheck="false"></div>
+            </div>
+            <div id="termErr" class="err padtop"></div>
+          </div>
+        </section>
         <!-- 进程 -->
         <section id="secProc" class="view hidden">
           <div class="section-head">进程 Top（按内存 · 可结束）</div>
@@ -575,9 +599,9 @@ async function refresh(){
   pnb.innerHTML=nts.map(n=>`<tr><td>${esc(n.name)}</td><td>${fmtBytes(n.rx_bytes)}</td><td>${fmtBytes(n.tx_bytes)}</td></tr>`).join("")||`<tr><td colspan="3" class="dim">网卡数据暂不可用</td></tr>`;
   const ptb=document.querySelector("#procT tbody");
   const ps=(pc.processes&&pc.processes.processes)||[];
-  ptb.innerHTML=ps.map(p=>`<tr><td>${esc(p.pid)}</td><td>${esc(p.name)}</td><td>${esc(p.uid)}</td><td>${esc(p.rss_mb)}</td><td><button class="logout-button killbtn muted" data-pid="${esc(p.pid)}" data-name="${esc(p.name)}">结束</button></td></tr>`).join("")||`<tr><td colspan="5" class="dim">进程数据暂不可用</td></tr>`;
+  ptb.innerHTML=ps.map(p=>`<tr><td>${esc(p.pid)}</td><td>${esc(p.name)}</td><td>${esc(p.uid)}</td><td>${esc(p.rss_mb)}</td><td><button class="logout-button killbtn muted" data-pid="${esc(p.pid)}" data-name="${esc(p.name)}" data-st="${esc(p.start_time||"")}">结束</button></td></tr>`).join("")||`<tr><td colspan="5" class="dim">进程数据暂不可用</td></tr>`;
   ptb.querySelectorAll(".killbtn").forEach(b=>b.addEventListener("click",()=>{
-    if(confirm(`结束进程 PID ${b.dataset.pid} (${b.dataset.name})？默认发送 SIGTERM。`)){postJSON("/api/processes/kill",{pid:Number(b.dataset.pid),signal:"TERM"}).then(t=>{let ok=false,err="";try{const j=JSON.parse(t);ok=j.ok===true;err=j.agent_error||""}catch{}if(ok){alert("已发送 SIGTERM");refresh().catch(()=>{})}else{alert("未成功发送信号："+(err||"请求被拒绝"))}}).catch(e=>alert("请求失败："+e))}
+    if(confirm(`结束进程 PID ${b.dataset.pid} (${b.dataset.name})？默认发送 SIGTERM。`)){postJSON("/api/processes/kill",{pid:Number(b.dataset.pid),signal:"TERM",start_time:b.dataset.st?Number(b.dataset.st):undefined}).then(t=>{let ok=false,err="";try{const j=JSON.parse(t);ok=j.ok===true;err=j.agent_error||""}catch{}if(ok){alert("已发送 SIGTERM");refresh().catch(()=>{})}else{alert("未成功发送信号："+(err||"请求被拒绝"))}}).catch(e=>alert("请求失败："+e))}
   }));
   if(svcFilter.dataset.loaded!=="1"||svcFilter.dataset.last!==svcFilter.value)loadServices();
   if(!window.__fsInit){window.__fsInit=1;fsLoad(fsCurrent).catch(()=>{})}
@@ -720,6 +744,78 @@ async function taskLog(){
     if(d.ok){document.getElementById("taskLog").textContent=(d.result.lines||[]).join("\n");}
   }catch(e){document.getElementById("taskLog").textContent="日志查询失败："+e}
 }
+// ── 受控终端（P5） ──
+let __termId=null,__termOffset=0,__termTimer=null,__termBuf="";
+function termState(s){const el=document.getElementById("termState");if(el)el.textContent=s}
+function termAppend(t){const el=document.getElementById("termOut");if(!el)return;__termBuf+=t;if(__termBuf.length>50000)__termBuf=__termBuf.slice(-50000);el.textContent=__termBuf;el.scrollTop=el.scrollHeight}
+function termSetErr(m){const el=document.getElementById("termErr");if(el)el.textContent=m||""}
+// 安全 JSON 读取：后端部分错误路径返回纯文本（http.Error），统一解析。
+async function readJSONSafe(resp){
+  const txt=await resp.text();
+  try{const j=JSON.parse(txt);return {ok:j.ok===true,data:j,text:txt}}
+  catch{return {ok:false,data:null,text:txt}}
+}
+async function termOpen(){
+  termSetErr("");
+  try{
+    const csrf=csrfCookie();
+    const r=await fetch(APP_BASE+"/api/pty/open",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrf},body:JSON.stringify({command:"bash",rows:24,cols:100})});
+    const j=await readJSONSafe(r);
+    if(!j.ok){termSetErr("打开失败："+(j.data&&j.data.agent_error?j.data.agent_error:(j.text||("HTTP "+r.status))));termState("打开失败");return}
+    __termId=j.data.result.session_id;__termOffset=0;__termBuf="";
+    const box=document.getElementById("termBox");if(box)box.classList.remove("hidden");
+    termState("已连接（会话 "+__termId+"）");
+    termAppend("会话 "+__termId+" 已启动。输入命令回车执行，Ctrl+C 中断。\n");
+    termPoll();
+    if(__termTimer)clearInterval(__termTimer);
+    __termTimer=setInterval(termPoll,300);
+    const ti=document.getElementById("termIn");if(ti){ti.disabled=false;ti.focus()}
+  }catch(e){termSetErr("请求失败："+e);termState("请求失败")}
+}
+async function termPoll(){
+  if(!__termId)return;
+  try{
+    const r=await fetch(APP_BASE+"/api/pty/status?session_id="+encodeURIComponent(__termId)+"&offset="+__termOffset,{credentials:"same-origin",headers:{"X-CSRF-Token":csrfCookie()}});
+    const j=await readJSONSafe(r);
+    if(!j.ok){termSetErr("轮询失败："+(j.data&&j.data.agent_error?j.data.agent_error:(j.text||("HTTP "+r.status))));return}
+    const res=j.data.result;
+    if(res.chunk)termAppend(res.chunk);
+    __termOffset=res.offset||0;
+    if(res.state==="exited"){
+      termState("已退出（exit "+res.exit_code+"）");
+      if(__termTimer){clearInterval(__termTimer);__termTimer=null}
+      const ti=document.getElementById("termIn");if(ti)ti.disabled=true;
+    }
+  }catch(e){termSetErr("轮询失败："+e)}
+}
+async function termInput(e){
+  if(e.key==="Enter"&&__termId){
+    const ti=document.getElementById("termIn");
+    const v=ti.value;ti.value="";
+    termAppend(v+"\n");
+    try{
+      const csrf=csrfCookie();
+      const r=await fetch(APP_BASE+"/api/pty/input",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrf},body:JSON.stringify({session_id:__termId,data:v+"\n"})});
+      const j=await readJSONSafe(r);
+      if(!j.ok)termSetErr("输入失败："+(j.data&&j.data.agent_error?j.data.agent_error:(j.text||("HTTP "+r.status))));
+    }catch(err){termSetErr("输入失败："+err)}
+  }
+}
+async function termClose(){
+  if(!__termId)return;
+  try{
+    const csrf=csrfCookie();
+    const r=await fetch(APP_BASE+"/api/pty/close",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrf},body:JSON.stringify({session_id:__termId})});
+    await readJSONSafe(r);
+  }catch(e){termSetErr("关闭请求失败："+e)}
+  if(__termTimer){clearInterval(__termTimer);__termTimer=null}
+  __termId=null;
+  termState("已关闭");
+  const box=document.getElementById("termBox");if(box)box.classList.add("hidden");
+}
+document.getElementById("btnTermOpen").addEventListener("click",termOpen);
+document.getElementById("btnTermClose").addEventListener("click",termClose);
+document.getElementById("termIn").addEventListener("keydown",termInput);
 async function fsUpload(){
   const inp=document.getElementById("fsUploadFile");
   const f=inp.files&&inp.files[0];

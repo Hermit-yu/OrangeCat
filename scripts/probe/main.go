@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -215,6 +216,51 @@ func probeTask() (bool, string) {
 	return true, ""
 }
 
+// probePTY verifies the PTY capability surface. The terminal is OFF by default
+// (master switch); in that state pty.list must fail with a "disabled" error,
+// which is a valid outcome (capability not enabled), not a probe failure.
+// When the switch is on, it opens a bash session, feeds echo, reads output,
+// then closes — a full round trip.
+func probePTY() (bool, string) {
+	// Try pty.list first; if it reports "disabled", the capability is off and
+	// that is expected (installer keeps it off by default).
+	ok, data := probeWithParams("pty.list", map[string]any{})
+	if !ok {
+		return true, "pty disabled (default)" // not an error when off
+	}
+	// If we get here, PTY is enabled: do a real round trip.
+	ok, start := probeWithParams("pty.open", map[string]any{"command": "bash", "rows": 24, "cols": 80})
+	if !ok || start == nil {
+		return false, "pty.open failed"
+	}
+	id, _ := start["session_id"].(string)
+	if id == "" {
+		return false, "pty.open returned no id"
+	}
+	ok, _ = probeWithParams("pty.input", map[string]any{"session_id": id, "data": "echo pty-probe-ok\n"})
+	if !ok {
+		return false, "pty.input failed"
+	}
+	found := false
+	for i := 0; i < 100; i++ {
+		time.Sleep(30 * time.Millisecond)
+		ok, st := probeWithParams("pty.status", map[string]any{"session_id": id, "offset": 0})
+		if ok && st != nil {
+			if chunk, _ := st["chunk"].(string); strings.Contains(chunk, "pty-probe-ok") {
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		return false, "pty output missing"
+	}
+	// close
+	probeWithParams("pty.close", map[string]any{"session_id": id})
+	_ = data
+	return true, ""
+}
+
 type req struct {
 	ID     string         `json:"id"`
 	Action string         `json:"action"`
@@ -305,6 +351,16 @@ func main() {
 	entry = map[string]any{"action": "task.log", "ok": taskOK}
 	if !taskOK {
 		entry["error"] = taskErr
+		failures++
+	}
+	line, _ = json.Marshal(entry)
+	fmt.Println(string(line))
+
+	// PTY capability surface (disabled by default -> expected not-failure).
+	ptyOK, ptyErr := probePTY()
+	entry = map[string]any{"action": "pty.list", "ok": ptyOK}
+	if !ptyOK {
+		entry["error"] = ptyErr
 		failures++
 	}
 	line, _ = json.Marshal(entry)

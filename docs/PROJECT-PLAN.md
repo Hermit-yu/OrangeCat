@@ -228,6 +228,16 @@
 
 验收：授权边界、跨会话隔离、断线重连/回收、并发上限、无效目标、超时清理和日志脱敏；不得以简单单测替代真实浏览器终端往返。
 
+**状态：已完成（2026-11-15，提交待定）。**
+
+- P5-1 `process.kill` 启动时间校验：agent `KillProcess` 加 `start_time` 参数，`readProcStartTicks` 读 `/proc/<pid>/stat` field 22 原生 tick，不匹配则软拒绝不发信号（PID 复用保护）；参数白名单 `pid/signal/force/start_time`。
+- P5-2 PTY 受控终端：agent 进程内会话注册表（`pty.go`）+ 增量输出轮询（offset，断线重连）；panel API `api_pty.go` 5 路由；审计 `TypePTY` + 12 `ReasonPTY*`。
+- 安全基线：默认关闭（`OCP_AGENT_PTY_ENABLED=1` 才启用，独立开关）；命令白名单（bash/sh 交互式，无自由参数）；并发上限 4、输出 256KiB、输入 64KiB、空闲 30min 自动回收；`open/input/close` 走 `requireWriteAccess` 三重门 + 逐次审计。
+- 探针：`probePTY`——关闭时 `pty.list` 报 disabled 视为非失败；启用时真实 open→input→status→close 往返。27/27 通过。
+- 生产验收（hermes.taoque.top/orangecat/）：`pty.open` 关闭时返回 `terminal capability is disabled`（安全基线）；临时启用后 curl 全流程——open→`echo PTY-REAL-TEST-OK`→输出回显→`pwd; exit`→`state: exited exit:0`；增量 offset 轮询验证（0→191，offset 续读空）；审计 `pty_open_sent/pty_input_sent/pty_close_sent` 落库；浏览器终端 section 渲染 + 关闭态友好错误。
+- **关键修复**：`exec.CommandContext(ctx,...)` 绑定请求级 ctx 导致 bash 立即被杀（会话刚开即 `exited`）——改 `context.Background()` 让会话跨请求存活；`allowedPTYArgv` 全加 `-i` 交互模式。
+- 已知边界：PTY 关闭时 `/api/pty/open` 返回纯文本错误（`http.Error`），前端 `readJSONSafe` 统一处理。
+
 ### P6 — 站点变更、系统管理与诊断
 
 交付：先选 2-3 个最常用且回滚简单的动作（主机名/时区/SSH 端口只读核对后再选择写入）；系统设置按发行版插件逐项推进；资源/网络/硬件体检任务只报告真实输出。

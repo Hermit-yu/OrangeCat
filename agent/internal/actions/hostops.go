@@ -411,10 +411,11 @@ func Processes(ctx context.Context, p map[string]any) (map[string]any, error) {
 		return nil, err
 	}
 	type proc struct {
-		pid   int
-		name  string
-		uid   string
-		rssMB float64
+		pid       int
+		name      string
+		uid       string
+		rssMB     float64
+		startTick int64
 	}
 	var procs []proc
 	for _, e := range entries {
@@ -440,9 +441,12 @@ func Processes(ctx context.Context, p map[string]any) (map[string]any, error) {
 		}
 		// After ") ": rest[0]=field 3 (state); RSS is field 24 → rest[21] (pages × 4KB).
 		rssPages, _ := strconv.ParseFloat(rest[21], 64)
+		// Field 22 (starttime, clock ticks) is rest[19]; used for PID-reuse
+		// protection at kill time.
+		startTick, _ := strconv.ParseInt(rest[19], 10, 64)
 		procName := string(statB)[strings.Index(string(statB), "(")+1 : idx]
 		uid := readProcUID(pid)
-		procs = append(procs, proc{pid, procName, uid, rssPages * 4.0 / 1024})
+		procs = append(procs, proc{pid, procName, uid, rssPages * 4.0 / 1024, startTick})
 	}
 	// sort desc by rss
 	sort.Slice(procs, func(i, j int) bool { return procs[i].rssMB > procs[j].rssMB })
@@ -451,7 +455,7 @@ func Processes(ctx context.Context, p map[string]any) (map[string]any, error) {
 	}
 	out := []map[string]any{}
 	for _, pr := range procs {
-		out = append(out, map[string]any{"pid": pr.pid, "name": pr.name, "uid": pr.uid, "rss_mb": round1(pr.rssMB)})
+		out = append(out, map[string]any{"pid": pr.pid, "name": pr.name, "uid": pr.uid, "rss_mb": round1(pr.rssMB), "start_time": pr.startTick})
 	}
 	return map[string]any{"processes": out}, nil
 }

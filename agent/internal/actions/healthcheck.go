@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -181,12 +182,16 @@ func HealthCheck(ctx context.Context, p map[string]any) (map[string]any, error) 
 // KillProcess sends a signal to a PID after verifying it exists and is
 // owned by a real /proc entry (R3: structured pid only, no shell).
 // Default signal is SIGTERM; SIGKILL only when param force=true.
+//
+// P5：start_time 校验——调用方可传期望的进程启动时间（epoch 秒，从
+// /proc/<pid>/stat field 22），若不匹配则拒绝发送信号，防 PID 复用误杀
+// （进程结束后 PID 被新进程复用，无校验会误杀新进程）。
 func KillProcess(ctx context.Context, p map[string]any) (map[string]any, error) {
 	for key := range p {
 		switch key {
-		case "pid", "signal", "force":
+		case "pid", "signal", "force", "start_time":
 		default:
-			return nil, fmt.Errorf("kill.process accepts pid, signal, force")
+			return nil, fmt.Errorf("kill.process accepts pid, signal, force, start_time")
 		}
 	}
 	pidVal, ok := p["pid"].(float64)
@@ -207,6 +212,21 @@ func KillProcess(ctx context.Context, p map[string]any) (map[string]any, error) 
 	if signal == "KILL" {
 		if f, _ := p["force"].(bool); !f {
 			return nil, errors.New("SIGKILL requires force=true")
+		}
+	}
+	// 期望启动时间校验（防 PID 复用）：若调用方传了 start_time（epoch 秒），
+	// 必须与 /proc/<pid>/stat field 22 的启动时钟节拍一致才放行。
+	if rawST, hasST := p["start_time"]; hasST {
+		wantST, ok := rawST.(float64)
+		if !ok || wantST < 0 {
+			return nil, errors.New("start_time must be a non-negative number")
+		}
+		gotST, err := readProcStartTicks(pid)
+		if err != nil {
+			return map[string]any{"sent": false, "pid": pid, "reason": "cannot read start time"}, nil
+		}
+		if gotST != int64(wantST) {
+			return map[string]any{"sent": false, "pid": pid, "reason": "start time mismatch (pid reused?)"}, nil
 		}
 	}
 
@@ -254,4 +274,24 @@ func KillProcess(ctx context.Context, p map[string]any) (map[string]any, error) 
 		return map[string]any{"sent": false, "pid": pid, "signal": signal, "comm": comm, "uid": uid, "reason": killErr.Error()}, nil
 	}
 	return map[string]any{"sent": true, "pid": pid, "signal": signal, "comm": comm, "uid": uid}, nil
+}
+
+// readProcStartTicks returns field 22 (starttime in clock ticks) from
+// /proc/<pid>/stat. PID reuse protection compares this exact value.
+func readProcStartTicks(pid int) (int64, error) {
+	b, err := os.ReadFile(filepath.Join("/proc", fmt.Sprint(pid), "stat"))
+	if err != nil {
+		return 0, err
+	}
+	// comm is in parens; find last ')' then field 22 is the 20th field after.
+	idx := strings.LastIndex(string(b), ") ")
+	if idx < 0 {
+		return 0, errors.New("malformed stat")
+	}
+	fields := strings.Fields(string(b)[idx+2:])
+	// After ") ": fields[0]=state(3), [1]=ppid(4), ... [19]=starttime(22)
+	if len(fields) < 20 {
+		return 0, errors.New("stat fields too short")
+	}
+	return strconv.ParseInt(fields[19], 10, 64)
 }

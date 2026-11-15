@@ -77,6 +77,12 @@ func NewRegistry() *Registry {
 	r.Register("task.start", TaskStart)
 	r.Register("task.status", TaskStatus)
 	r.Register("task.log", TaskLog)
+	r.Register("pty.open", ptyOpen)
+	r.Register("pty.status", ptyStatus)
+	r.Register("pty.input", ptyInput)
+	r.Register("pty.resize", ptyResize)
+	r.Register("pty.close", ptyClose)
+	r.Register("pty.list", ptyList)
 	return r
 }
 

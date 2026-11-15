@@ -22,6 +22,7 @@ const (
 	TypeFsWrite         = "fs_write"
 	TypeFsMutate        = "fs_mutate"
 	TypeFsUpload        = "fs_upload"
+	TypePTY             = "pty"
 
 	OutcomeSuccess  = "success"
 	OutcomeRejected = "rejected"
@@ -65,6 +66,15 @@ const (
 	ReasonFsUploadSent          = "fs_upload_sent"
 	ReasonFsUploadFailed        = "fs_upload_failed"
 	ReasonFsUploadRequestBad    = "fs_upload_request_invalid"
+	ReasonPTYOpenSent           = "pty_open_sent"
+	ReasonPTYOpenFailed         = "pty_open_failed"
+	ReasonPTYOpenRequestBad     = "pty_open_request_invalid"
+	ReasonPTYInputSent          = "pty_input_sent"
+	ReasonPTYInputFailed        = "pty_input_failed"
+	ReasonPTYInputRequestBad    = "pty_input_request_invalid"
+	ReasonPTYCloseSent          = "pty_close_sent"
+	ReasonPTYCloseFailed        = "pty_close_failed"
+	ReasonPTYCloseRequestBad    = "pty_close_request_invalid"
 )
 
 var allowedReasons = map[string]struct{}{
@@ -82,6 +92,9 @@ var allowedReasons = map[string]struct{}{
 	ReasonFsRemoveSent: {}, ReasonFsRemoveFailed: {}, ReasonFsRemoveRequestBad: {},
 	ReasonFsRestoreSent: {}, ReasonFsRestoreFailed: {}, ReasonFsRestoreRequestBad: {},
 	ReasonFsUploadSent: {}, ReasonFsUploadFailed: {}, ReasonFsUploadRequestBad: {},
+	ReasonPTYOpenSent: {}, ReasonPTYOpenFailed: {}, ReasonPTYOpenRequestBad: {},
+	ReasonPTYInputSent: {}, ReasonPTYInputFailed: {}, ReasonPTYInputRequestBad: {},
+	ReasonPTYCloseSent: {}, ReasonPTYCloseFailed: {}, ReasonPTYCloseRequestBad: {},
 }
 
 // Event deliberately has no username, password, cookie, token, URL, or body fields.
@@ -162,7 +175,7 @@ func openLog(path string) (*os.File, error) {
 }
 
 func (w *Writer) Record(event Event) error {
-	if event.Type != TypeLogin && event.Type != TypeLogout && event.Type != TypeProcessKill && event.Type != TypeContainerAction && event.Type != TypeNginxAction && event.Type != TypeFsWrite && event.Type != TypeFsMutate && event.Type != TypeFsUpload {
+	if event.Type != TypeLogin && event.Type != TypeLogout && event.Type != TypeProcessKill && event.Type != TypeContainerAction && event.Type != TypeNginxAction && event.Type != TypeFsWrite && event.Type != TypeFsMutate && event.Type != TypeFsUpload && event.Type != TypePTY {
 		return fmt.Errorf("invalid auth event type %q", event.Type)
 	}
 	if event.Outcome != OutcomeSuccess && event.Outcome != OutcomeRejected {
