@@ -444,11 +444,13 @@ func Processes(ctx context.Context, p map[string]any) (map[string]any, error) {
 		startTick int64
 		state     string
 		cpuPct    float64
+		cpuJiffs  float64 // utime+stime at first sample
 	}
 	var procs []proc
-	// 单快照 CPU 近似：系统总 jiffies 与每进程 utime+stime 的比值（生命周期平均）。
-	// 读 /proc/stat 第一行（cpu 合计）作为系统总 CPU 时间基准。
-	sysCPU := readTotalCPUTicks()
+	totalProcs := 0
+	runningProcs := 0
+	// 第一遍：全系统扫描，收集进程元数据 + 第一采样 CPU jiffies。
+	// 进程数/运行中为全系统真实计数（不只 top20）。
 	for _, e := range entries {
 		if err := ctx.Err(); err != nil {
 			return nil, err
@@ -480,22 +482,87 @@ func Processes(ctx context.Context, p map[string]any) (map[string]any, error) {
 		stime, _ := strconv.ParseFloat(rest[12], 64)
 		procName := string(statB)[strings.Index(string(statB), "(")+1 : idx]
 		uid := readProcUID(pid)
-		cpuPct := 0.0
-		if sysCPU > 0 {
-			cpuPct = (utime + stime) / sysCPU * 100
+		totalProcs++
+		if rest[0] == "R" {
+			runningProcs++
 		}
-		procs = append(procs, proc{pid, procName, uid, rssPages * 4.0 / 1024, startTick, rest[0], cpuPct})
+		procs = append(procs, proc{pid, procName, uid, rssPages * 4.0 / 1024, startTick, rest[0], 0, utime + stime})
 	}
 	// sort desc by rss
 	sort.Slice(procs, func(i, j int) bool { return procs[i].rssMB > procs[j].rssMB })
 	if len(procs) > topN {
 		procs = procs[:topN]
 	}
+	// 瞬时 CPU：两采样差值。第一遍已取 t1；间隔约 300ms 后取 t2。
+	// cpuPct = Δproc_jiffies / Δsystem_total_jiffies × 100 × 核数（占单核，top 语义，可 >100）。
+	sysT1 := readTotalCPUTicks()
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(300 * time.Millisecond):
+	}
+	sysT2 := readTotalCPUTicks()
+	sysDelta := sysT2 - sysT1
+	if sysDelta <= 0 {
+		sysDelta = 1 // 防除零；无基准则 cpuPct=0
+	}
+	nCPU := numCPUs()
+	for i := range procs {
+		b, err := os.ReadFile(filepath.Join("/proc", fmt.Sprint(procs[i].pid), "stat"))
+		if err != nil {
+			continue // 进程已退出，保留第一采样（cpuPct=0 合理）
+		}
+		idx := strings.LastIndex(string(b), ") ")
+		if idx < 0 {
+			continue
+		}
+		rest := strings.Fields(string(b)[idx+2:])
+		if len(rest) < 13 {
+			continue
+		}
+		u2, _ := strconv.ParseFloat(rest[11], 64)
+		s2, _ := strconv.ParseFloat(rest[12], 64)
+		procs[i].cpuPct = (u2 + s2 - procs[i].cpuJiffs) / sysDelta * 100 * float64(nCPU)
+		if procs[i].cpuPct < 0 {
+			procs[i].cpuPct = 0
+		}
+	}
 	out := []map[string]any{}
 	for _, pr := range procs {
 		out = append(out, map[string]any{"pid": pr.pid, "name": pr.name, "uid": pr.uid, "rss_mb": round1(pr.rssMB), "start_time": pr.startTick, "state": pr.state, "cpu_pct": round1(pr.cpuPct)})
 	}
-	return map[string]any{"processes": out}, nil
+	// 运行实体数：/proc/loadavg 第 4 字段第一段（内核权威瞬时值，含内核线程）。
+	// 全系统扫描时 R 进程是毫秒级状态，扫描耗时>10ms 必然漏掉大部分，
+	// 用 loadavg 的运行实体计数更可靠（不恒 0）。
+	if lb, err := os.ReadFile("/proc/loadavg"); err == nil {
+		fields := strings.Fields(string(lb))
+		if len(fields) >= 4 {
+			if r := strings.SplitN(fields[3], "/", 2); len(r) > 0 {
+				if n, err := strconv.Atoi(r[0]); err == nil {
+					runningProcs = n
+				}
+			}
+		}
+	}
+	return map[string]any{"processes": out, "total_processes": totalProcs, "running_processes": runningProcs}, nil
+}
+
+// numCPUs returns the number of online CPUs (from /proc/stat cpuN lines), min 1.
+func numCPUs() int {
+	b, err := os.ReadFile("/proc/stat")
+	if err != nil {
+		return 1
+	}
+	n := 0
+	for _, line := range strings.Split(string(b), "\n") {
+		if len(line) > 3 && strings.HasPrefix(line, "cpu") && line[3] >= '0' && line[3] <= '9' {
+			n++
+		}
+	}
+	if n < 1 {
+		return 1
+	}
+	return n
 }
 
 // readProcUID returns the real uid from /proc/<pid>/status, or "unknown".
