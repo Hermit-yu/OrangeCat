@@ -163,6 +163,14 @@
 
 验收：真实 vhost 与证书逐条对照；非法域名/端口/路径拒绝；模拟 nginx -t/reload 失败并验证原配置恢复；现有域名 HTTPS canary 无影响。
 
+**状态（2026-11-15）：发现切片已完成并上线。**
+
+- Agent：`nginx.sites.full`（vhost + 证书到期 + proxy 标记 + nginx 容器事实）、`nginx.test`（docker exec nginx -t）、`nginx.reload`（docker exec nginx -s reload）；容器名固定白名单，配置/证书目录固定宿主挂载点。
+- 面板：`GET /api/nginx/full` 只读；`POST /api/nginx/action` 写（`requireWriteAccess` 三重门 + `nginx_action` 审计类型，TEST/RELOAD 白名单）。
+- 前端：站点表 6 列（server_name / 配置文件 / 证书宿主路径 / 到期 / proxy / 操作），全局与行内 test/reload 按钮。
+- 验收：生产 8 站点渲染、证书到期 85 天逐条真实、`nginx -t` 执行成功、审计 `nginx_action_sent` 留痕（含 client_ip/method）；19/19 探针通过；本地门禁 8/8。
+- 已知未完成：反代模板的新增/修改/删除写切片（配置原子替换 + 回滚）留待后续；容器内 reload 会对自身 TLS 链路造成瞬时断开（审计证明成功，前端显示“请求失败”属已知边界）。
+
 ### P4 — 文件管理 + 后台任务基础
 
 交付：允许根目录管理，列表/查看/编辑/上传/下载/改名/删除；写入快照/临时文件/权限检查/原子替换；后台任务状态 API 和有界日志。
