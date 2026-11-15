@@ -117,6 +117,18 @@ func main() {
 	mux.HandleFunc("/api/health", p.requireAuth(p.handleHealth))
 	mux.HandleFunc("/api/diagnostics", p.requireAuth(p.handleDiagnostics))
 	mux.HandleFunc("/api/audit", p.requireAuth(p.handleAudit))
+	// P7：审计导出（CSV/JSONL 下载，只读）
+	mux.HandleFunc("/api/audit/export", p.requireAuth(p.handleAuditExport))
+	// P7：metrics.db 在线备份/列表/恢复（写门 + 审计）
+	mux.HandleFunc("/api/backup/create", p.handleBackupCreate)
+	mux.HandleFunc("/api/backup/list", p.requireAuth(p.handleBackupList))
+	mux.HandleFunc("/api/backup/restore", p.handleBackupRestore)
+	// P7：nginx access log 分析（只读，真实日志）
+	mux.HandleFunc("/api/nginx/log", p.requireAuth(p.handleNginxLog))
+	// P7：Telegram 通知（status 只读；test/alert 写门 + 审计）
+	mux.HandleFunc("/api/notify/status", p.requireAuth(p.handleNotifyStatus))
+	mux.HandleFunc("/api/notify/test", p.handleNotifyTest)
+	mux.HandleFunc("/api/notify/alert", p.handleNotifyAlert)
 	mux.HandleFunc("/api/password", p.requireAuth(p.handleChangePassword))
 	mux.HandleFunc("/api/processes/kill", p.handleProcessKill)
 	mux.HandleFunc("/api/history", p.requireAuth(p.handleHistory))
