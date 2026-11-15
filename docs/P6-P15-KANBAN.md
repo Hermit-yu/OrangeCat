@@ -15,8 +15,8 @@
 | P11 应用目录+生态 | ✅ | 9ef05e1 | 目录+异步安装/卸载+状态发现；第三方源/kejilion适配标依赖未就绪 |
 | P12 经典/桌面/个性化 | ✅ | b98754a | 双模式+桌面窗口+主题+自定义背景(MIME校验)；3D场景标依赖未就绪 |
 | P13 隔离内置浏览器 | ✅ | fadb98d | chromedp隔离进程+URL白名单(fail-closed)+默认关闭；中文输入/鼠标键盘说明已支持 |
-| P14 多节点协作+通知渠道 | ✅ | (P14 提交) | 多渠道通知(telegram/feishu/dingtalk/wecom 真实适配)+阈值通知(alert.rules/check)；跨节点复制/批量标"依赖未就绪(需第二节点)" |
-| P15 多语言+可访问性 | ✅ | (P15 提交) | 中/英 i18n 真实渲染+键盘焦点+全域复验矩阵 docs/P15-VERIFICATION-MATRIX.md；3D/Passkey/OpenRC 等标"依赖未就绪" |
+| P14 多节点协作+通知渠道 | ✅ | 93892a7 | 多渠道通知(telegram/feishu/dingtalk/wecom 真实适配)+阈值通知(alert.rules/check)；跨节点复制/批量标"依赖未就绪(需第二节点)" |
+| P15 多语言+可访问性 | ✅ | 456f151 | 中/英 i18n 真实渲染+键盘焦点+全域复验矩阵 docs/P15-VERIFICATION-MATRIX.md；3D/Passkey/OpenRC 等标"依赖未就绪" |
 
 ## 每里程碑真实落地准则
 
