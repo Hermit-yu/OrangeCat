@@ -156,6 +156,56 @@ section .panel-card{margin-bottom:22px}
 /* ── 服务项 ── */
 .service-item{background:var(--surface-subtle);border:1px solid var(--border);border-radius:var(--radius);padding:11px 12px}
 
+/* ── 演示站概览板块 ── */
+.realtime-monitoring{display:flex;flex-direction:column;gap:14px}
+.realtime-monitoring__header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.realtime-monitoring__heading{display:flex;align-items:center;gap:10px}
+.realtime-monitoring__icon{width:38px;height:38px;border-radius:10px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.realtime-monitoring__heading h2{font-size:16px;font-weight:600;color:var(--text);margin:0}
+.realtime-monitoring__heading p{font-size:12px;color:var(--text-muted);margin:2px 0 0}
+.realtime-monitoring__actions{display:flex;align-items:center;gap:10px}
+.observed-at{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted)}
+.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.panel-card__header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.panel-card__header>div{display:flex;align-items:center;gap:10px;min-width:0}
+.panel-card__header h2{font-size:15px;font-weight:600;color:var(--text);margin:0}
+.panel-card__header p{font-size:12px;color:var(--text-muted);margin:2px 0 0}
+.panel-card__icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.panel-card__icon--brand{background:var(--brand-soft);color:var(--brand)}
+.panel-card__icon--blue{background:var(--blue-soft);color:var(--blue)}
+.panel-card__icon--violet{background:var(--violet-soft);color:var(--violet)}
+.detail-list{display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--text)}
+.detail-list .detail-row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border-subtle)}
+.detail-list .detail-row:last-child{border-bottom:none}
+.detail-list .detail-row .k{color:var(--text-muted);flex-shrink:0}
+.detail-list .detail-row .v{color:var(--text);font-weight:500;text-align:right;word-break:break-all}
+.resource-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.resource-summary__item{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface-subtle);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;text-align:left;transition:all .12s;color:var(--text)}
+.resource-summary__item:hover{background:var(--interaction-hover-subtle);border-color:var(--border-strong)}
+.resource-summary__icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.resource-summary__icon--brand{background:var(--brand-soft);color:var(--brand)}
+.resource-summary__icon--blue{background:var(--blue-soft);color:var(--blue)}
+.resource-summary__icon--violet{background:var(--violet-soft);color:var(--violet)}
+.resource-summary__item strong{display:block;font-size:20px;font-weight:700;color:var(--text);line-height:1.1}
+.resource-summary__item small{display:block;font-size:12px;color:var(--text-muted);margin-top:2px}
+.resource-summary__item em{font-style:normal;font-size:11px;color:var(--text-muted);margin-left:auto;white-space:nowrap}
+.overview-system-management__header{margin-bottom:12px}
+.overview-system-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.overview-system-card{background:var(--surface-subtle);border:1px solid var(--border);border-radius:var(--radius);padding:12px;cursor:pointer;transition:all .12s;text-align:left;color:var(--text)}
+.overview-system-card:hover{background:var(--interaction-hover-subtle);border-color:var(--border-strong)}
+.overview-system-card__top{display:flex;flex-direction:column;gap:8px}
+.overview-system-card__icon{width:32px;height:32px;border-radius:8px;background:var(--surface-raised);border:1px solid var(--border);color:var(--text-secondary);display:flex;align-items:center;justify-content:center}
+.overview-system-card span:last-child{font-size:13px;font-weight:500;color:var(--text)}
+.service-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.service-item{display:flex;align-items:center;gap:10px}
+.service-item__icon{width:34px;height:34px;border-radius:8px;background:var(--success-soft);color:var(--success);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.service-item__icon.down{background:var(--danger-soft);color:var(--danger)}
+.service-item__body{flex:1;min-width:0}
+.service-item__name{font-size:13px;font-weight:600;color:var(--text)}
+.service-item__meta{font-size:11px;color:var(--text-muted);margin-top:1px}
+.service-item__state{font-size:12px;font-weight:600;color:var(--success)}
+.service-item__state.down{color:var(--danger)}
+
 /* ── 工具布局辅助 ── */
 .user-info{flex:1;min-width:0}
 .user-name{font-weight:600}
@@ -243,7 +293,59 @@ section .panel-card{margin-bottom:22px}
         <div id="agentDown" class="agentdown-inline hidden">ocp-agent 当前不可达，以下为错误详情</div>
         <!-- 概览 -->
         <section id="secOverview" class="view">
-          <div class="metric-grid" id="overview"></div>
+          <!-- 1. 实时监控 -->
+          <div class="realtime-monitoring">
+            <header class="realtime-monitoring__header">
+              <div class="realtime-monitoring__heading">
+                <span class="realtime-monitoring__icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></svg></span>
+                <div><h2>实时监控</h2><p>选择指标查看历史趋势</p></div>
+              </div>
+              <div class="realtime-monitoring__actions">
+                <span class="observed-at"><span id="monitorTime"></span></span>
+                <button class="icon-button" id="btnMonitorRefresh" title="刷新系统状态" aria-label="刷新系统状态"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path></svg></button>
+              </div>
+            </header>
+            <div class="metric-grid" id="overview"></div>
+          </div>
+          <!-- 2. 系统信息 + 网络 -->
+          <div class="overview-grid">
+            <div class="panel-card panel-card--system">
+              <header class="panel-card__header"><div><span class="panel-card__icon panel-card__icon--brand"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path><path d="M9 21V9"></path></svg></span><div><h2>系统信息</h2><p>主机与操作系统详情</p></div></div></header>
+              <div class="detail-list" id="sysInfoList"><div class="dim">加载中…</div></div>
+            </div>
+            <div class="panel-card">
+              <header class="panel-card__header"><div><span class="panel-card__icon panel-card__icon--blue"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg></span><div><h2>网络</h2><p>网卡流量计数</p></div></div></header>
+              <div class="detail-list" id="netInfoList"><div class="dim">加载中…</div></div>
+            </div>
+          </div>
+          <!-- 3. 资源汇总 -->
+          <div class="panel-card panel-card--resource-overview">
+            <header class="panel-card__header"><div><span class="panel-card__icon panel-card__icon--violet"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.54 15H17a2 2 0 0 0-2 2v4.54"></path><path d="M7 3.34V5a3 3 0 0 0 3 3a2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h3.17"></path><path d="M11 21.95V18a2 2 0 0 0-2-2a2 2 0 0 1-2-2v-1a2 2 0 0 0-2-2H2.05"></path><circle cx="12" cy="12" r="10"></circle></svg></span><div><h2>资源与一致性</h2><p>网站、Docker 与来源汇总</p></div></div></header>
+            <div class="resource-summary resource-summary--horizontal">
+              <button class="resource-summary__item" data-nav="secNginx"><span class="resource-summary__icon resource-summary__icon--brand"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.54 15H17a2 2 0 0 0-2 2v4.54"></path><path d="M7 3.34V5a3 3 0 0 0 3 3a2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h3.17"></path><path d="M11 21.95V18a2 2 0 0 0-2-2a2 2 0 0 1-2-2v-1a2 2 0 0 0-2-2H2.05"></path><circle cx="12" cy="12" r="10"></circle></svg></span><span><strong id="resSites">—</strong><small>网站</small></span><em id="resSitesSub">—</em></button>
+              <button class="resource-summary__item" data-nav="secDocker"><span class="resource-summary__icon resource-summary__icon--blue"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"></path><path d="m7 16.5-4.74-2.85"></path><path d="m7 16.5 5-3"></path><path d="M7 16.5v5.17"></path><path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"></path></svg></span><span><strong id="resDocker">—</strong><small>容器</small></span><em id="resDockerSub">—</em></button>
+              <button class="resource-summary__item" data-nav="secResources"><span class="resource-summary__icon resource-summary__icon--violet"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg></span><span><strong id="resImages">—</strong><small>镜像</small></span><em id="resImagesSub">—</em></button>
+            </div>
+          </div>
+          <!-- 4. 系统管理 -->
+          <div class="panel-card overview-system-management">
+            <header class="panel-card__header overview-system-management__header">
+              <div><span class="panel-card__icon panel-card__icon--violet"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 17H5"></path><path d="M19 7h-9"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg></span><div><h2>系统管理</h2><p>常用系统工具快捷入口</p></div></div>
+            </header>
+            <div class="overview-system-grid" aria-label="6 个常用工具">
+              <button class="overview-system-card" data-nav="secDocker"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"></path></svg></span><span>容器管理</span></span></button>
+              <button class="overview-system-card" data-nav="secFs"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg></span><span>文件管理</span></span></button>
+              <button class="overview-system-card" data-nav="secNginx"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path></svg></span><span>Nginx 站点</span></span></button>
+              <button class="overview-system-card" data-nav="secSvc"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></span><span>服务状态</span></span></button>
+              <button class="overview-system-card" data-nav="secHealth"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></span><span>主机体检</span></span></button>
+              <button class="overview-system-card" data-nav="secDiag"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg></span><span>链路诊断</span></span></button>
+            </div>
+          </div>
+          <!-- 5. 核心服务 -->
+          <div class="panel-card">
+            <header class="panel-card__header"><div><span class="panel-card__icon panel-card__icon--violet"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg></span><div><h2>核心服务</h2><p>关键服务运行状态</p></div></div></header>
+            <div class="service-grid" id="coreServices"><div class="dim">加载中…</div></div>
+          </div>
         </section>
         <!-- 容器 -->
         <section id="secDocker" class="view hidden">
@@ -379,6 +481,26 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 // 侧栏导航切换
 function navTo(id){document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden"));const sec=document.getElementById(id);if(sec)sec.classList.remove("hidden");document.querySelectorAll(".sidebar__link").forEach(l=>l.classList.toggle("router-link-active",l.dataset.target===id));const t=document.getElementById("pageTitle");if(t&&document.querySelector(".sidebar__link[data-target='"+id+"']"))t.firstChild.textContent=document.querySelector(".sidebar__link[data-target='"+id+"']").textContent.trim();}
 function initNav(){const links=document.querySelectorAll(".sidebar__link");links.forEach(l=>l.addEventListener("click",()=>{if(l.dataset.target)navTo(l.dataset.target)}));}
+// 核心服务（概览板块）
+async function loadCoreServices(){
+  const box=document.getElementById("coreServices");
+  if(!box)return;
+  try{
+    const r=await fetch(APP_BASE+"/api/services?filter=",{credentials:"same-origin"});
+    const d=await r.json();
+    const svc=(d.services&&d.services.services)||[];
+    const cores=["docker","nginx","mysql","php","redis","ocp-agent","ocp-panel","ocp-sampler"];
+    const picked=svc.filter(s=>cores.some(c=>s.name.includes(c))).slice(0,6);
+    box.innerHTML=picked.length?picked.map(s=>{
+      const down=s.active!=="active";
+      return `<div class="service-item"><span class="service-item__icon${down?" down":""}"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg></span><div class="service-item__body"><div class="service-item__name">${esc(s.name)}</div><div class="service-item__meta">${esc(s.loaded)}</div></div><div class="service-item__state${down?" down":""}">${down?"停止":"运行中"}</div></div>`;
+    }).join(""):'<div class="dim">服务数据暂不可用</div>';
+  }catch(e){box.innerHTML='<div class="dim">服务加载失败</div>'}
+}
+// 概览板块导航绑定（data-nav 按钮点击跳转到对应功能）
+function bindOverviewNav(){
+  document.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.nav)navTo(b.dataset.nav)}));
+}
 
 async function refresh(){
   const [ov,dock,ng,nx,pc]=await Promise.all(["/api/overview","/api/docker","/api/nginx","/api/net","/api/processes"].map(u=>fetch(APP_BASE+u,{credentials:"same-origin"}).then(r=>r.ok?r.json():{agent_error:"HTTP "+r.status})));
@@ -399,9 +521,28 @@ async function refresh(){
     card("CPU",(m.cpu_percent??"—")+"%",m.cpu_cores+" 核 · 负载 "+(m.load_1m??"?"),m.cpu_percent)+
     card("内存",m.mem_used_percent??"—",`${fmtBytes((m.mem_used_mb||0)*1048576)} / ${fmtBytes((m.mem_total_mb||0)*1048576)}`,m.mem_used_percent)+
     card("磁盘 /(ext4)",m.disk_used_percent==null?"—":`${m.disk_used_percent}%`,m.disk_used_gb==null||m.disk_total_gb==null?"磁盘数据暂不可用":`${m.disk_used_gb}G / ${m.disk_total_gb}G`,m.disk_used_percent)+
-    card("容器",(dock.summary&&dock.summary.containers)??"—",`镜像 ${dock.summary?.images??"?"} · 卷 ${dock.summary?.volumes??"?"}`)+
-    card("站点",ng.sites?(ng.sites.count??0):"—",o.hostname+" · "+o.distro)+
-    card("Uptime",o.uptime_seconds?Math.floor(o.uptime_seconds/86400)+" 天":"—","内核 "+(o.kernel||""));
+    card("1 分钟负载",m.load_1m??"—",m.cpu_cores+" CPU 核",(m.cpu_percent!=null?Math.min(100,(m.cpu_percent??0)):undefined));
+  // 时间戳
+  const mt=document.getElementById("monitorTime");if(mt){const now=new Date();mt.textContent=(now.getMonth()+1)+"/"+now.getDate()+", "+String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");}
+  // 系统信息
+  const sil=document.getElementById("sysInfoList");if(sil){sil.innerHTML=
+    `<div class="detail-row"><span class="k">主机名</span><span class="v">${esc(o.hostname||"—")}</span></div>`+
+    `<div class="detail-row"><span class="k">操作系统</span><span class="v">${esc(o.distro||"—")}</span></div>`+
+    `<div class="detail-row"><span class="k">内核</span><span class="v">${esc(o.kernel||"—")}</span></div>`+
+    `<div class="detail-row"><span class="k">CPU 核数</span><span class="v">${esc(m.cpu_cores??"—")} 核</span></div>`+
+    `<div class="detail-row"><span class="k">Nginx 站点</span><span class="v">${ng.sites?(ng.sites.count??0):"—"} 个</span></div>`+
+    `<div class="detail-row"><span class="k">运行时间</span><span class="v">${o.uptime_seconds?Math.floor(o.uptime_seconds/86400)+" 天":"—"}</span></div>`;}
+  // 网络（过滤 docker/br- 虚拟网卡，只显示主要物理接口）
+  const nil=document.getElementById("netInfoList");if(nil){const ifaces=((nx.interfaces&&nx.interfaces.interfaces)||[]).filter(n=>!/^(docker|br-|veth|virbr)/.test(n.name));nil.innerHTML=ifaces.length?ifaces.map(n=>`<div class="detail-row"><span class="k">${esc(n.name)}</span><span class="v">↓${fmtBytes(n.rx_bytes)} · ↑${fmtBytes(n.tx_bytes)}</span></div>`).join(""):'<div class="dim">网卡数据暂不可用</div>';}
+  // 资源汇总
+  const rS=document.getElementById("resSites");if(rS)rS.textContent=ng.sites?(ng.sites.count??0):"—";
+  const rSS=document.getElementById("resSitesSub");if(rSS)rSS.textContent="站点发现";
+  const rD=document.getElementById("resDocker");if(rD)rD.textContent=(dock.summary&&dock.summary.containers)??"—";
+  const rDS=document.getElementById("resDockerSub");if(rDS)rDS.textContent="容器运行";
+  const rI=document.getElementById("resImages");if(rI)rI.textContent=(dock.summary&&dock.summary.images)??"—";
+  const rIS=document.getElementById("resImagesSub");if(rIS)rIS.textContent="镜像总数";
+  // 核心服务
+  loadCoreServices();
   const ctb=document.querySelector("#dockerT tbody");
   const cs=(dock.containers&&dock.containers.containers)||[];
   const actBtns=(n)=>`<button class="actbtn act-start" data-name="${esc(n)}">启动</button><button class="actbtn act-restart" data-name="${esc(n)}">重启</button><button class="actbtn act-stop" data-name="${esc(n)}">停止</button><button class="actbtn act-kill actdanger" data-name="${esc(n)}">强杀</button>`;
@@ -440,6 +581,7 @@ async function refresh(){
   if(!window.__fsInit){window.__fsInit=1;fsLoad(fsCurrent).catch(()=>{})}
   if(chartInfo.dataset.loaded!=="1")loadChart();
   if(!window.__navInit){window.__navInit=1;initNav();}
+  if(!window.__ovNavInit){window.__ovNavInit=1;bindOverviewNav();}
 }
 
 let fsCurrent="/home/web";
@@ -675,6 +817,7 @@ document.getElementById("btnHealth").addEventListener("click",async()=>{const ou
 document.getElementById("btnDiag").addEventListener("click",async()=>{const tb=document.querySelector("#diagT tbody");tb.innerHTML='<tr><td colspan="4" class="dim">诊断中…（最多约 30 秒）</td></tr>';const r=await fetch(APP_BASE+"/api/diagnostics",{credentials:"same-origin"});const d=await r.json();const res=(d.diagnostics&&d.diagnostics.results)||[];tb.innerHTML=res.map(x=>`<tr><td>${esc(x.target)}</td><td>${esc(x.kind)}</td><td class="${x.ok?"stok":"sterr"}">${x.ok?"ok":"fail"}</td><td class="dim">${esc(x.status!==undefined?("HTTP "+x.status):x.rtt_ms!==undefined?("rtt "+x.rtt_ms+"ms"):x.error||x.loss||"-")}</td></tr>`).join("")||`<tr><td colspan="4" class="dim">诊断不可用：${esc(d.agent_error||"无结果")}</td></tr>`;});
 async function loadChart(){const now=Math.floor(Date.now()/1000);const from=now-3600;const r=await fetch(APP_BASE+"/api/history?level=raw&from="+from+"&to="+now,{credentials:"same-origin"});const d=await r.json();const svg=document.getElementById("chartRaw");if(d.error){chartInfo.textContent="历史数据暂不可用："+d.error;return}const s=(d.samples||[]).map(p=>({cpu:p.CPU!==undefined?p.CPU:p.cpu,mem:p.Mem!==undefined?p.Mem:p.mem,ts:p.Ts!==undefined?p.Ts:p.ts}));if(!s.length){chartInfo.textContent="最近 1 小时尚无采样数据（采样器未运行或刚启动）";return}const W=900,H=160,pad=6;const x=(i)=>pad+(W-2*pad)*i/(Math.max(1,s.length-1));const y=(v)=>H-pad-(H-2*pad)*Math.min(100,Math.max(0,v))/100;const path=(k)=>s.map((p,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(p[k]).toFixed(1)).join(" ");svg.innerHTML=`<path d="${path("cpu")}" fill="none" stroke="var(--brand)" stroke-width="1.6"/><path d="${path("mem")}" fill="none" stroke="var(--success)" stroke-width="1.6"/><text x="${pad}" y="14" fill="#685f52" font-size="10">CPU</text><text x="${pad+34}" y="14" fill="#236e47" font-size="10">内存</text>`;chartInfo.textContent=`${s.length} 个采样 · 最近 ${Math.round((s[s.length-1].ts-s[0].ts)/60)} 分钟 · CPU 峰值 ${Math.max(...s.map(p=>p.cpu)).toFixed(1)}% · 内存峰值 ${Math.max(...s.map(p=>p.mem)).toFixed(1)}%`;chartInfo.dataset.loaded="1";}
 document.getElementById("btnRefresh").addEventListener("click",()=>refresh().catch(()=>{}));
+const bmr=document.getElementById("btnMonitorRefresh");if(bmr)bmr.addEventListener("click",()=>refresh().catch(()=>{}));
 (async()=>{const r=await fetch(APP_BASE+"/api/overview",{credentials:"same-origin"});if(r.status===401)return;refresh().catch(()=>{});setInterval(()=>refresh().catch(()=>{}),5000)})();
 </script>
 </body>
