@@ -289,6 +289,12 @@ section .panel-card{margin-bottom:22px}
 .activity-pane.hidden{display:none}
 #auditT td,#auditT th{font-size:12px}
 .audit-type{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);white-space:nowrap}
+/* Process 页汇总卡 */
+.proc-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px}
+.proc-summary__card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.proc-summary__card span{font-size:12px;color:var(--muted)}
+.proc-summary__card strong{font-size:20px;color:var(--text)}
+.sec-filter{margin-bottom:10px;width:100%;box-sizing:border-box}
 .ai-err{color:var(--danger);font-size:12px;padding:0 2px}
 .ai-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-muted);padding:40px}
 .ai-empty .ai-empty__icon{width:52px;height:52px;border-radius:14px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center}
@@ -591,8 +597,15 @@ section .panel-card{margin-bottom:22px}
         </section>
         <!-- 进程 -->
         <section id="secProc" class="view hidden">
-          <div class="section-head">进程 Top（按内存 · 可结束）</div>
-          <div class="panel-card pad0"><table id="procT"><thead><tr><th>PID</th><th>名称</th><th>UID</th><th>RSS MB</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="section-head">进程管理（实时 · 可搜索 · 可结束）</div>
+          <div class="proc-summary" id="procSummary">
+            <div class="proc-summary__card"><span>进程数</span><strong id="procCount">—</strong></div>
+            <div class="proc-summary__card"><span>运行中</span><strong id="procRunning">—</strong></div>
+            <div class="proc-summary__card"><span>内存合计</span><strong id="procMemTot">—</strong></div>
+            <div class="proc-summary__card"><span>CPU 占用（Top 均值）</span><strong id="procCpuAvg">—</strong></div>
+          </div>
+          <input id="procSearch" class="sec-filter pad" placeholder="按名称 / PID / UID 过滤…">
+          <div class="panel-card pad0"><table id="procT"><thead><tr><th>PID</th><th>名称</th><th>状态</th><th>CPU %</th><th>UID</th><th>RSS MB</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </section>
         <!-- 服务 -->
         <section id="secSvc" class="view hidden">
@@ -854,10 +867,21 @@ async function refresh(){
   pnb.innerHTML=nts.map(n=>`<tr><td>${esc(n.name)}</td><td>${fmtBytes(n.rx_bytes)}</td><td>${fmtBytes(n.tx_bytes)}</td></tr>`).join("")||`<tr><td colspan="3" class="dim">网卡数据暂不可用</td></tr>`;
   const ptb=document.querySelector("#procT tbody");
   const ps=(pc.processes&&pc.processes.processes)||[];
-  ptb.innerHTML=ps.map(p=>`<tr><td>${esc(p.pid)}</td><td>${esc(p.name)}</td><td>${esc(p.uid)}</td><td>${esc(p.rss_mb)}</td><td><button class="logout-button killbtn muted" data-pid="${esc(p.pid)}" data-name="${esc(p.name)}" data-st="${esc(p.start_time||"")}">结束</button></td></tr>`).join("")||`<tr><td colspan="5" class="dim">进程数据暂不可用</td></tr>`;
+  const procF=document.getElementById("procSearch");const pf=(procF&&procF.value||"").trim().toLowerCase();
+  const shown=pf?ps.filter(p=>String(p.pid).includes(pf)||String(p.name).toLowerCase().includes(pf)||String(p.uid).includes(pf)):ps;
+  // 汇总卡：真实数据（进程数 / 运行中 / 内存合计 / Top CPU 均值）
+  const running=ps.filter(p=>p.state==="R").length;
+  const memTot=ps.reduce((a,p)=>a+(Number(p.rss_mb)||0),0);
+  const cpuAvg=ps.length?(ps.reduce((a,p)=>a+(Number(p.cpu_pct)||0),0)/ps.length):0;
+  const setNum=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};
+  setNum("procCount",ps.length);setNum("procRunning",running);setNum("procMemTot",memTot.toFixed(0)+" MB");setNum("procCpuAvg",cpuAvg.toFixed(1)+"%");
+  const stCls=s=>s==="R"?"sterr":(s==="S"?"stok":"dim");
+  ptb.innerHTML=shown.map(p=>`<tr><td>${esc(p.pid)}</td><td>${esc(p.name)}</td><td class="${stCls(p.state)}">${esc(p.state||"")}</td><td>${esc(p.cpu_pct??"")}</td><td>${esc(p.uid)}</td><td>${esc(p.rss_mb)}</td><td><button class="logout-button killbtn muted" data-pid="${esc(p.pid)}" data-name="${esc(p.name)}" data-st="${esc(p.start_time||"")}">结束</button></td></tr>`).join("")||`<tr><td colspan="7" class="dim">进程数据暂不可用</td></tr>`;
   ptb.querySelectorAll(".killbtn").forEach(b=>b.addEventListener("click",()=>{
     if(confirm(`结束进程 PID ${b.dataset.pid} (${b.dataset.name})？默认发送 SIGTERM。`)){postJSON("/api/processes/kill",{pid:Number(b.dataset.pid),signal:"TERM",start_time:b.dataset.st?Number(b.dataset.st):undefined}).then(t=>{let ok=false,err="";try{const j=JSON.parse(t);ok=j.ok===true;err=j.agent_error||""}catch{}if(ok){alert("已发送 SIGTERM");refresh().catch(()=>{})}else{alert("未成功发送信号："+(err||"请求被拒绝"))}}).catch(e=>alert("请求失败："+e))}
   }));
+  const procS=document.getElementById("procSearch");
+  if(procS&&!window.__procSearch){window.__procSearch=1;procS.addEventListener("input",()=>{refresh().catch(()=>{})})}
   if(svcFilter.dataset.loaded!=="1"||svcFilter.dataset.last!==svcFilter.value)loadServices();
   if(!window.__fsInit){window.__fsInit=1;fsLoad(fsCurrent).catch(()=>{})}
   if(chartInfo.dataset.loaded!=="1")loadChart();

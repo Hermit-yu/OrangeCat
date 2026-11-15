@@ -392,6 +392,32 @@ func NetInterfaces(ctx context.Context, _ map[string]any) (map[string]any, error
 }
 
 // Processes: top-N by RSS from /proc/<pid>/stat.
+// readTotalCPUTicks reads the total CPU jiffies from /proc/stat first line.
+// Returns 0 if unavailable; caller treats 0 as "no CPU baseline" (cpuPct=0).
+func readTotalCPUTicks() float64 {
+	b, err := os.ReadFile("/proc/stat")
+	if err != nil {
+		return 0
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		if !strings.HasPrefix(line, "cpu ") {
+			continue
+		}
+		fields := strings.Fields(line)
+		// cpu user nice system idle iowait irq softirq steal guest guest_nice
+		var total float64
+		for _, f := range fields[1:] {
+			v, err := strconv.ParseFloat(f, 64)
+			if err != nil {
+				continue
+			}
+			total += v
+		}
+		return total
+	}
+	return 0
+}
+
 func Processes(ctx context.Context, p map[string]any) (map[string]any, error) {
 	topN := 20
 	for key := range p {
@@ -416,8 +442,13 @@ func Processes(ctx context.Context, p map[string]any) (map[string]any, error) {
 		uid       string
 		rssMB     float64
 		startTick int64
+		state     string
+		cpuPct    float64
 	}
 	var procs []proc
+	// 单快照 CPU 近似：系统总 jiffies 与每进程 utime+stime 的比值（生命周期平均）。
+	// 读 /proc/stat 第一行（cpu 合计）作为系统总 CPU 时间基准。
+	sysCPU := readTotalCPUTicks()
 	for _, e := range entries {
 		if err := ctx.Err(); err != nil {
 			return nil, err
@@ -444,9 +475,16 @@ func Processes(ctx context.Context, p map[string]any) (map[string]any, error) {
 		// Field 22 (starttime, clock ticks) is rest[19]; used for PID-reuse
 		// protection at kill time.
 		startTick, _ := strconv.ParseInt(rest[19], 10, 64)
+		// Field 14 (utime) + field 15 (stime) → rest[11] + rest[12]（用户态+内核态 jiffies）。
+		utime, _ := strconv.ParseFloat(rest[11], 64)
+		stime, _ := strconv.ParseFloat(rest[12], 64)
 		procName := string(statB)[strings.Index(string(statB), "(")+1 : idx]
 		uid := readProcUID(pid)
-		procs = append(procs, proc{pid, procName, uid, rssPages * 4.0 / 1024, startTick})
+		cpuPct := 0.0
+		if sysCPU > 0 {
+			cpuPct = (utime + stime) / sysCPU * 100
+		}
+		procs = append(procs, proc{pid, procName, uid, rssPages * 4.0 / 1024, startTick, rest[0], cpuPct})
 	}
 	// sort desc by rss
 	sort.Slice(procs, func(i, j int) bool { return procs[i].rssMB > procs[j].rssMB })
@@ -455,7 +493,7 @@ func Processes(ctx context.Context, p map[string]any) (map[string]any, error) {
 	}
 	out := []map[string]any{}
 	for _, pr := range procs {
-		out = append(out, map[string]any{"pid": pr.pid, "name": pr.name, "uid": pr.uid, "rss_mb": round1(pr.rssMB), "start_time": pr.startTick})
+		out = append(out, map[string]any{"pid": pr.pid, "name": pr.name, "uid": pr.uid, "rss_mb": round1(pr.rssMB), "start_time": pr.startTick, "state": pr.state, "cpu_pct": round1(pr.cpuPct)})
 	}
 	return map[string]any{"processes": out}, nil
 }
