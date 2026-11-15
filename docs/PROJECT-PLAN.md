@@ -182,7 +182,16 @@
 - Panel `/api/fs/{list,read,stat}`：GET only + `requireAuth` + path 非空校验，`agent_error` 原样透出；前端"文件浏览（P4 只读）"卡片：路径输入 + 打开/上级、目录导航、点击预览、二进制与截断标记、`..` 返回上级。
 - 门禁：agent/panel build+vet+test 全绿，check.sh 8/8 绿；安装探针扩到 22 项（fs.list/read/stat 均以真实路径实测）并通过。
 - 生产验收（hermes.taoque.top/orangecat/）：列出 /home/web 真实目录；导航进 /home/web/conf.d；预览 default.conf 真实内容（1.6 KB）；不存在路径诚实报错（lstat no such file or directory）；"上级"按钮回 /home/web。
-- 已知未完成：写操作（快照/原子替换/回滚）、上传/改名/删除、后台任务 API——均未设计实施；P4-1 只读路径不做 confinement，如后续确认需要根 confinement 则属契约变更，需单独立案。
+- 已知未完成：上传/改名/删除、后台任务 API——均未设计实施；写切片已完成（见下）；P4-1 只读路径不做 confinement，如后续确认需要根 confinement 则属契约变更，需单独立案。
+
+状态（2026-11-15）：写切片（P4-2）已完成并上线。
+- Agent `fs.write`：对已存在常规文件做原子替换——先快照原内容到 `/var/lib/ocp/fs-snapshots/`（0640），再同目录写临时文件（0600）、fsync、rename 覆盖；任何失败删临时文件、原文件不动（失败不留下半文件）。拒绝符号链接/目录/新建/内容 >1MiB；路径仍为规范化。
+- Agent `fs.write.rollback`：从快照恢复目标文件内容并删快照；快照必须位于托管目录且目标路径显式传入（不接受从快照推导，防篡改）。
+- Panel `/api/fs/write`、`/api/fs/write/rollback`：POST + `requireWriteAccess` 三重门（原站/session/CSRF）+ 逐出口审计；审计类型 `fs_write` + 6 个原因（sent/failed/request_invalid × write/rollback）。
+- 前端：文件预览区加"保存/回滚"按钮；保存后记录快照路径、回滚恢复内容并重载预览。
+- 探针：专用 write→rollback→内容恢复校验序列（/tmp scratch，不触生产配置文件）；23/23 通过。
+- 生产验收（hermes.taoque.top/orangecat/）：浏览器编辑 /tmp scratch 真实写入（磁盘内容变化 + 快照记录）→ 点回滚（磁盘恢复原样 + 快照消费）→ 审计 write/rollback 均 success 留痕（来源 IP 正确）。
+- 已知未完成：上传/改名/删除、后台任务 API——均未设计实施。
 
 ### P5 — 受控终端与进程操作
 
