@@ -36,7 +36,7 @@ const (
 	ptyMaxSessions    = 4                // 并发终端会话上限
 	ptyMaxOutputBytes = 256 << 10        // 每会话输出缓冲上限（256 KiB 环形）
 	ptyMaxInputBytes  = 1 << 16          // 单次输入上限（64 KiB）
-	ptyIdleTimeout    = 30 * time.Minute // 空闲超时自动回收
+	ptyIdleTimeout    = 5 * time.Minute // 空闲超时自动回收（运维终端 5 分钟无交互自动关，防泄漏）
 	ptyPollInterval   = 100 * time.Millisecond
 	ptyMaxCommandLen  = 256
 	ptyMaxRows        = 200
