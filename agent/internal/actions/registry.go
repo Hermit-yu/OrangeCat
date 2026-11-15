@@ -91,6 +91,7 @@ func NewRegistry() *Registry {
 	r.Register("cluster.node.detail", ClusterNodeDetail)
 	r.Register("cluster.pair", ClusterPair)
 	r.Register("net.interfaces", noParams(NetInterfaces))
+	r.Register("net.public", noParams(NetPublic))
 	r.Register("processes", Processes)
 	r.Register("fs.list", FsList)
 	r.Register("fs.read", FsRead)

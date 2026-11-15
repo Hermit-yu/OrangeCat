@@ -223,6 +223,29 @@ section .panel-card{margin-bottom:22px}
 .metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 @media (max-width:1100px){.metric-grid{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:600px){.metric-grid{grid-template-columns:1fr}}
+/* P16：演示站 5 卡实时监控（补实时网络） */
+.metric-grid.metric-grid--5{grid-template-columns:repeat(5,1fr)}
+@media (max-width:1200px){.metric-grid.metric-grid--5{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:800px){.metric-grid.metric-grid--5{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:500px){.metric-grid.metric-grid--5{grid-template-columns:1fr}}
+.metric-card__icon{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:var(--surface-raised);border:1px solid var(--border);color:var(--brand);margin-bottom:8px}
+/* P16：状态徽章（Normal / 外网已识别 / Agent online） */
+.status-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--border)}
+.status-badge--ok{color:var(--success);background:var(--success-soft);border-color:color-mix(in srgb,var(--success) 30%,var(--border))}
+.status-badge--warn{color:var(--warning);background:var(--warning-soft);border-color:color-mix(in srgb,var(--warning) 30%,var(--border))}
+.status-badge--info{color:var(--blue);background:var(--blue-soft);border-color:color-mix(in srgb,var(--blue) 30%,var(--border))}
+.status-badge .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+/* P16：演示站硬件网格（两列键值） */
+.hw-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;font-size:13px}
+.hw-grid .hw-item .hw-k{font-size:11px;color:var(--text-muted);margin-bottom:2px}
+.hw-grid .hw-item .hw-v{color:var(--text);font-weight:500;word-break:break-all}
+.hw-grid .hw-item--full{grid-column:1/-1}
+/* P16：网络位置卡（运营商 + IP 列表） */
+.netloc-item{padding:10px 0;border-bottom:1px solid var(--border-subtle)}
+.netloc-item:last-child{border-bottom:none}
+.netloc-item .netloc-k{font-size:11px;color:var(--text-muted);margin-bottom:3px}
+.netloc-item .netloc-v{font-size:14px;font-weight:600;color:var(--text);word-break:break-all}
+
 .metric-card{background:var(--surface-gradient);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow-xs)}
 .metric-card__top{font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px}
 .metric-card__value{font-size:26px;font-weight:700;color:var(--text)}
@@ -507,57 +530,58 @@ section .panel-card{margin-bottom:22px}
         <div id="agentDown" class="agentdown-inline hidden" data-i18n="agent_down">ocp-agent 当前不可达，以下为错误详情</div>
         <!-- 概览 -->
         <section id="secOverview" class="view">
-          <!-- 1. 实时监控 -->
+          <!-- 1. 实时监控（演示站 5 卡：CPU/内存/系统盘/负载/实时网络） -->
           <div class="realtime-monitoring">
             <header class="realtime-monitoring__header">
               <div class="realtime-monitoring__heading">
                 <span class="realtime-monitoring__icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></svg></span>
-                <div><h2>实时监控</h2><p>选择指标查看历史趋势</p></div>
+                <div><h2 data-i18n="live_monitoring">实时监控</h2><p data-i18n="live_monitoring_sub">选择指标查看历史趋势</p></div>
               </div>
               <div class="realtime-monitoring__actions">
+                <span class="status-badge status-badge--ok" id="agentOnlineBadge"><span class="dot"></span><span id="agentOnlineText" data-i18n="agent_online">Agent online</span></span>
                 <span class="observed-at"><span id="monitorTime"></span></span>
                 <button class="icon-button" id="btnMonitorRefresh" title="刷新系统状态" aria-label="刷新系统状态"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path></svg></button>
               </div>
             </header>
-            <div class="metric-grid" id="overview"></div>
+            <div class="metric-grid metric-grid--5" id="overview"></div>
           </div>
-          <!-- 2. 系统信息 + 网络 -->
+          <!-- 2. 系统信息 + 网络与位置（演示站：宽系统面板 + 窄网络面板） -->
           <div class="overview-grid">
             <div class="panel-card panel-card--system">
-              <header class="panel-card__header"><div><span class="panel-card__icon panel-card__icon--brand"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path><path d="M9 21V9"></path></svg></span><div><h2>系统信息</h2><p>主机与操作系统详情</p></div></div></header>
+              <header class="panel-card__header"><div><span class="panel-card__icon panel-card__icon--brand"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path><path d="M9 21V9"></path></svg></span><div><h2 id="sysHostTitle" data-i18n="system_info">系统信息</h2><p data-i18n="system_info_sub">主机与操作系统详情</p></div></div><span class="status-badge status-badge--ok" id="sysStatusBadge"><span class="dot"></span><span data-i18n="status_normal">正常</span></span></header>
               <div class="detail-list" id="sysInfoList"><div class="dim">加载中…</div></div>
             </div>
             <div class="panel-card">
-              <header class="panel-card__header"><div><span class="panel-card__icon panel-card__icon--blue"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg></span><div><h2>网络</h2><p>网卡流量计数</p></div></div></header>
+              <header class="panel-card__header"><div><span class="panel-card__icon panel-card__icon--blue"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg></span><div><h2 data-i18n="network_location">网络与位置</h2><p data-i18n="network_location_sub">公网与本地网络标识</p></div></div><span class="status-badge status-badge--info" id="netStatusBadge"><span class="dot"></span><span data-i18n="status_public_recognized">外网已识别</span></span></header>
               <div class="detail-list" id="netInfoList"><div class="dim">加载中…</div></div>
             </div>
           </div>
           <!-- 3. 资源汇总 -->
           <div class="panel-card panel-card--resource-overview">
-            <header class="panel-card__header"><div><span class="panel-card__icon panel-card__icon--violet"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.54 15H17a2 2 0 0 0-2 2v4.54"></path><path d="M7 3.34V5a3 3 0 0 0 3 3a2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h3.17"></path><path d="M11 21.95V18a2 2 0 0 0-2-2a2 2 0 0 1-2-2v-1a2 2 0 0 0-2-2H2.05"></path><circle cx="12" cy="12" r="10"></circle></svg></span><div><h2>资源与一致性</h2><p>网站、Docker 与来源汇总</p></div></div></header>
+            <header class="panel-card__header"><div><span class="panel-card__icon panel-card__icon--violet"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.54 15H17a2 2 0 0 0-2 2v4.54"></path><path d="M7 3.34V5a3 3 0 0 0 3 3a2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h3.17"></path><path d="M11 21.95V18a2 2 0 0 0-2-2a2 2 0 0 1-2-2v-1a2 2 0 0 0-2-2H2.05"></path><circle cx="12" cy="12" r="10"></circle></svg></span><div><h2 data-i18n="resource_summary">资源与一致性</h2><p data-i18n="resource_summary_sub">网站、Docker 与来源汇总</p></div></div></header>
             <div class="resource-summary resource-summary--horizontal">
-              <button class="resource-summary__item" data-nav="secNginx"><span class="resource-summary__icon resource-summary__icon--brand"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.54 15H17a2 2 0 0 0-2 2v4.54"></path><path d="M7 3.34V5a3 3 0 0 0 3 3a2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h3.17"></path><path d="M11 21.95V18a2 2 0 0 0-2-2a2 2 0 0 1-2-2v-1a2 2 0 0 0-2-2H2.05"></path><circle cx="12" cy="12" r="10"></circle></svg></span><span><strong id="resSites">—</strong><small>网站</small></span><em id="resSitesSub">—</em></button>
-              <button class="resource-summary__item" data-nav="secDocker"><span class="resource-summary__icon resource-summary__icon--blue"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"></path><path d="m7 16.5-4.74-2.85"></path><path d="m7 16.5 5-3"></path><path d="M7 16.5v5.17"></path><path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"></path></svg></span><span><strong id="resDocker">—</strong><small>容器</small></span><em id="resDockerSub">—</em></button>
-              <button class="resource-summary__item" data-nav="secResources"><span class="resource-summary__icon resource-summary__icon--violet"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg></span><span><strong id="resImages">—</strong><small>镜像</small></span><em id="resImagesSub">—</em></button>
+              <button class="resource-summary__item" data-nav="secNginx"><span class="resource-summary__icon resource-summary__icon--brand"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.54 15H17a2 2 0 0 0-2 2v4.54"></path><path d="M7 3.34V5a3 3 0 0 0 3 3a2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h3.17"></path><path d="M11 21.95V18a2 2 0 0 0-2-2a2 2 0 0 1-2-2v-1a2 2 0 0 0-2-2H2.05"></path><circle cx="12" cy="12" r="10"></circle></svg></span><span><strong id="resSites">—</strong><small data-i18n="res_sites">网站</small></span><em id="resSitesSub">—</em></button>
+              <button class="resource-summary__item" data-nav="secDocker"><span class="resource-summary__icon resource-summary__icon--blue"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"></path><path d="m7 16.5-4.74-2.85"></path><path d="m7 16.5 5-3"></path><path d="M7 16.5v5.17"></path><path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"></path></svg></span><span><strong id="resDocker">—</strong><small data-i18n="res_containers">容器</small></span><em id="resDockerSub">—</em></button>
+              <button class="resource-summary__item" data-nav="secResources"><span class="resource-summary__icon resource-summary__icon--violet"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg></span><span><strong id="resImages">—</strong><small data-i18n="res_images">镜像</small></span><em id="resImagesSub">—</em></button>
             </div>
           </div>
           <!-- 4. 系统管理 -->
           <div class="panel-card overview-system-management">
             <header class="panel-card__header overview-system-management__header">
-              <div><span class="panel-card__icon panel-card__icon--violet"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 17H5"></path><path d="M19 7h-9"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg></span><div><h2>系统管理</h2><p>常用系统工具快捷入口</p></div></div>
+              <div><span class="panel-card__icon panel-card__icon--violet"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 17H5"></path><path d="M19 7h-9"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg></span><div><h2 data-i18n="system_manage">系统管理</h2><p data-i18n="system_manage_sub">常用系统工具快捷入口</p></div></div>
             </header>
             <div class="overview-system-grid" aria-label="6 个常用工具">
-              <button class="overview-system-card" data-nav="secDocker"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"></path></svg></span><span>容器管理</span></span></button>
-              <button class="overview-system-card" data-nav="secFs"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg></span><span>文件管理</span></span></button>
-              <button class="overview-system-card" data-nav="secNginx"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path></svg></span><span>Nginx 站点</span></span></button>
-              <button class="overview-system-card" data-nav="secSvc"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></span><span>服务状态</span></span></button>
-              <button class="overview-system-card" data-nav="secHealth"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></span><span>主机体检</span></span></button>
-              <button class="overview-system-card" data-nav="secDiag"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg></span><span>链路诊断</span></span></button>
+              <button class="overview-system-card" data-nav="secDocker"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"></path></svg></span><span data-i18n="tool_docker">容器管理</span></span></button>
+              <button class="overview-system-card" data-nav="secFs"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg></span><span data-i18n="tool_fs">文件管理</span></span></button>
+              <button class="overview-system-card" data-nav="secNginx"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path></svg></span><span data-i18n="tool_nginx">Nginx 站点</span></span></button>
+              <button class="overview-system-card" data-nav="secSvc"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></span><span data-i18n="tool_svc">服务状态</span></span></button>
+              <button class="overview-system-card" data-nav="secHealth"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></span><span data-i18n="tool_health">主机体检</span></span></button>
+              <button class="overview-system-card" data-nav="secDiag"><span class="overview-system-card__top"><span class="overview-system-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg></span><span data-i18n="tool_diag">链路诊断</span></span></button>
             </div>
           </div>
           <!-- 5. 核心服务 -->
           <div class="panel-card">
-            <header class="panel-card__header"><div><span class="panel-card__icon panel-card__icon--violet"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg></span><div><h2>核心服务</h2><p>关键服务运行状态</p></div></div></header>
+            <header class="panel-card__header"><div><span class="panel-card__icon panel-card__icon--violet"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg></span><div><h2 data-i18n="core_services">核心服务</h2><p data-i18n="core_services_sub">关键服务运行状态</p></div></div></header>
             <div class="service-grid" id="coreServices"><div class="dim">加载中…</div></div>
           </div>
         </section>
@@ -990,6 +1014,18 @@ function bindOverviewNav(){
   document.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.nav)navTo(b.dataset.nav)}));
 }
 
+// ── P16：实时网络速率（前端双采样：保存上次字节数 + 时间戳）──
+let _netLast={rx:0,tx:0,t:0};
+// ── P16：公网网络信息缓存（加载一次）──
+let _netPublicCache=null;
+async function loadNetPublic(){
+  if(_netPublicCache)return _netPublicCache;
+  try{
+    const r=await fetch(APP_BASE+"/api/net/public",{credentials:"same-origin"});
+    if(r.ok){_netPublicCache=await r.json();}
+  }catch{}
+  return _netPublicCache;
+}
 async function refresh(){
   const [ov,dock,ng,nx,pc]=await Promise.all(["/api/overview","/api/docker","/api/nginx","/api/net","/api/processes"].map(u=>fetch(APP_BASE+u,{credentials:"same-origin"}).then(r=>r.ok?r.json():{agent_error:"HTTP "+r.status})));
   const o=ov.info||{},m=ov.metrics||{};
@@ -1004,24 +1040,68 @@ async function refresh(){
   if(errs.length){agentDown.classList.remove("hidden");agentDown.textContent="agent 部分不可达 → "+errs.join("；");const d=document.getElementById("agentDot");if(d)d.className="dot down";const l=document.getElementById("agentLabel");if(l)l.textContent="ocp-agent 部分不可达";}
   else{agentDown.classList.add("hidden");const d=document.getElementById("agentDot");if(d)d.className="dot";const l=document.getElementById("agentLabel");if(l)l.textContent="ocp-agent 在线";}
 
-  const card=(t,b,s,bv)=>{const value=Math.min(100,Math.max(0,Number(bv)||0));return `<div class="metric-card"><div class="metric-card__top">${esc(t)}</div><div class="metric-card__value">${esc(b)}</div>${bv!==undefined?`<progress class="bar" max="100" value="${value}" aria-label="${esc(t)}使用率"></progress>`:""}<div class="metric-card__sub">${esc(s||"")}</div></div>`};
+  const card=(t,b,s,bv,icon)=>{const value=Math.min(100,Math.max(0,Number(bv)||0));return `<div class="metric-card">${icon?`<span class="metric-card__icon">${icon}</span>`:""}<div class="metric-card__top">${esc(t)}</div><div class="metric-card__value">${esc(b)}</div>${bv!==undefined?`<progress class="bar" max="100" value="${value}" aria-label="${esc(t)}使用率"></progress>`:""}<div class="metric-card__sub">${esc(s||"")}</div></div>`};
+  // 实时网络速率（双采样：rx/tx 字节差 / 时间差）
+  let netRate="—",netRateSub="等待下一次采样";
+  const phyIfaces=((nx.interfaces&&nx.interfaces.interfaces)||[]).filter(n=>!/^(docker|br-|veth|virbr|lo)/.test(n.name));
+  const totRx=phyIfaces.reduce((a,n)=>a+(n.rx_bytes||0),0);
+  const totTx=phyIfaces.reduce((a,n)=>a+(n.tx_bytes||0),0);
+  const nowT=Date.now();
+  if(_netLast.t&&nowT>_netLast.t){
+    const dt=(nowT-_netLast.t)/1000;
+    if(dt>0){
+      const rxRate=Math.max(0,(totRx-_netLast.rx)/dt);
+      const txRate=Math.max(0,(totTx-_netLast.tx)/dt);
+      if(rxRate>0||txRate>0){netRate=`↓${fmtBytes(rxRate)}/s · ↑${fmtBytes(txRate)}/s`;netRateSub=phyIfaces.map(n=>n.name).join(" + ")+" 实时";}
+    }
+  }
+  _netLast={rx:totRx,tx:totTx,t:nowT};
   overview.innerHTML=
-    card("CPU",(m.cpu_percent??"—")+"%",m.cpu_cores+" 核 · 负载 "+(m.load_1m??"?"),m.cpu_percent)+
-    card("内存",m.mem_used_percent??"—",`${fmtBytes((m.mem_used_mb||0)*1048576)} / ${fmtBytes((m.mem_total_mb||0)*1048576)}`,m.mem_used_percent)+
-    card("磁盘 /(ext4)",m.disk_used_percent==null?"—":`${m.disk_used_percent}%`,m.disk_used_gb==null||m.disk_total_gb==null?"磁盘数据暂不可用":`${m.disk_used_gb}G / ${m.disk_total_gb}G`,m.disk_used_percent)+
-    card("1 分钟负载",m.load_1m??"—",m.cpu_cores+" CPU 核",(m.cpu_percent!=null?Math.min(100,(m.cpu_percent??0)):undefined));
+    card("CPU",(m.cpu_percent??"—")+"%",m.cpu_cores+" 核 · 负载 "+(m.load_1m??"?"),m.cpu_percent,`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"></rect><rect x="9" y="9" width="6" height="6"></rect><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"></path></svg>`)+
+    card("内存",m.mem_used_percent??"—",`${fmtBytes((m.mem_used_mb||0)*1048576)} / ${fmtBytes((m.mem_total_mb||0)*1048576)}`,m.mem_used_percent,`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"></rect><path d="M6 10v4M10 10v4M14 10v4M18 10v4"></path></svg>`)+
+    card("系统盘 /(ext4)",m.disk_used_percent==null?"—":`${m.disk_used_percent}%`,m.disk_used_gb==null||m.disk_total_gb==null?"磁盘数据暂不可用":`${m.disk_used_gb}G / ${m.disk_total_gb}G`,m.disk_used_percent,`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"></path><path d="M6 16h.01M10 16h.01"></path></svg>`)+
+    card("1 分钟负载",m.load_1m??"—",m.cpu_cores+" CPU 核",(m.cpu_percent!=null?Math.min(100,(m.cpu_percent??0)):undefined),`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10"></path><path d="M12 6a6 6 0 1 0 6 6"></path><path d="M12 10a2 2 0 1 0 2 2"></path></svg>`)+
+    card("实时网络",netRate,netRateSub,undefined,`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`);
   // 时间戳
   const mt=document.getElementById("monitorTime");if(mt){const now=new Date();mt.textContent=(now.getMonth()+1)+"/"+now.getDate()+", "+String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");}
-  // 系统信息
+  // Agent online 徽章（概览头 + 侧栏）
+  const ab=document.getElementById("agentOnlineBadge");
+  const at=document.getElementById("agentOnlineText");
+  if(ab){const err=errs.length>0;ab.className="status-badge "+(err?"status-badge--warn":"status-badge--ok");if(at)at.textContent=err?"Agent degraded":"Agent online";}
+  // 系统信息（演示站：操作系统 + 硬件网格）
   const sil=document.getElementById("sysInfoList");if(sil){sil.innerHTML=
-    `<div class="detail-row"><span class="k">主机名</span><span class="v">${esc(o.hostname||"—")}</span></div>`+
-    `<div class="detail-row"><span class="k">操作系统</span><span class="v">${esc(o.distro||"—")}</span></div>`+
-    `<div class="detail-row"><span class="k">内核</span><span class="v">${esc(o.kernel||"—")}</span></div>`+
-    `<div class="detail-row"><span class="k">CPU 核数</span><span class="v">${esc(m.cpu_cores??"—")} 核</span></div>`+
-    `<div class="detail-row"><span class="k">Nginx 站点</span><span class="v">${ng.sites?(ng.sites.count??0):"—"} 个</span></div>`+
-    `<div class="detail-row"><span class="k">运行时间</span><span class="v">${o.uptime_seconds?Math.floor(o.uptime_seconds/86400)+" 天":"—"}</span></div>`;}
-  // 网络（过滤 docker/br- 虚拟网卡，只显示主要物理接口）
-  const nil=document.getElementById("netInfoList");if(nil){const ifaces=((nx.interfaces&&nx.interfaces.interfaces)||[]).filter(n=>!/^(docker|br-|veth|virbr)/.test(n.name));nil.innerHTML=ifaces.length?ifaces.map(n=>`<div class="detail-row"><span class="k">${esc(n.name)}</span><span class="v">↓${fmtBytes(n.rx_bytes)} · ↑${fmtBytes(n.tx_bytes)}</span></div>`).join(""):'<div class="dim">网卡数据暂不可用</div>';}
+    `<div class="hw-grid">`+
+    `<div class="hw-item"><div class="hw-k">主机名</div><div class="hw-v">${esc(o.hostname||"—")}</div></div>`+
+    `<div class="hw-item"><div class="hw-k">操作系统</div><div class="hw-v">${esc(o.distro||"—")}</div></div>`+
+    `<div class="hw-item"><div class="hw-k">内核</div><div class="hw-v">${esc(o.kernel||"—")}</div></div>`+
+    `<div class="hw-item"><div class="hw-k">架构</div><div class="hw-v">${esc(o.arch||"—")}</div></div>`+
+    `<div class="hw-item"><div class="hw-k">CPU 核数</div><div class="hw-v">${esc(m.cpu_cores??"—")} 核</div></div>`+
+    `<div class="hw-item"><div class="hw-k">运行时间</div><div class="hw-v">${o.uptime_seconds?Math.floor(o.uptime_seconds/86400)+" 天":"—"}</div></div>`+
+    `<div class="hw-item hw-item--full"><div class="hw-k">Nginx 站点</div><div class="hw-v">${ng.sites?(ng.sites.count??0):"—"} 个</div></div>`+
+    `</div>`;}
+  const stb=document.getElementById("sysHostTitle");if(stb)stb.textContent=o.hostname||"系统信息";
+  // 网络与位置（演示站：运营商 + 公网 IPv4/IPv6 + 本地 IP）
+  const nil=document.getElementById("netInfoList");if(nil){
+    const np=loadNetPublic();
+    nil.innerHTML='<div class="netloc-item"><div class="netloc-k">运营商</div><div class="netloc-v">等待查询…</div></div>';
+    np.then(pub=>{
+      if(!pub)return;
+      const r=(pub.result||pub);
+      const pub4=r.public_ipv4||"未识别",op=r.operator||"未识别",v6=r.public_ipv6||"未识别",li=r.local_ipv4||"未识别";
+      const bd=document.getElementById("netStatusBadge");
+      const netOk=pub4!=="未识别";
+      if(bd){bd.className="status-badge "+(netOk?"status-badge--ok":"status-badge--warn");const s=bd.querySelector("span");if(s)s.textContent=netOk?"外网已识别":"未识别";}
+      const el=document.getElementById("netInfoList");if(!el)return;
+      el.innerHTML=
+        `<div class="netloc-item"><div class="netloc-k">运营商</div><div class="netloc-v">${esc(op)}</div></div>`+
+        `<div class="netloc-item"><div class="netloc-k">公网 IPv4</div><div class="netloc-v">${esc(pub4)}</div></div>`+
+        `<div class="netloc-item"><div class="netloc-k">公网 IPv6</div><div class="netloc-v">${esc(v6)}</div></div>`+
+        `<div class="netloc-item"><div class="netloc-k">本地 IPv4</div><div class="netloc-v">${esc(li)}</div></div>`;
+    });
+    // 网卡流量（物理接口累计，保持真实性）
+    const ifaces=phyIfaces;
+    nil.insertAdjacentHTML("beforeend",ifaces.length?ifaces.map(n=>`<div class="netloc-item"><div class="netloc-k">${esc(n.name)} 累计</div><div class="netloc-v">↓${fmtBytes(n.rx_bytes)} · ↑${fmtBytes(n.tx_bytes)}</div></div>`).join(""):"");
+  }
   // 资源汇总
   const rS=document.getElementById("resSites");if(rS)rS.textContent=ng.sites?(ng.sites.count??0):"—";
   const rSS=document.getElementById("resSitesSub");if(rSS)rSS.textContent="站点发现";
@@ -1914,8 +1994,8 @@ document.getElementById("btnBgClear").addEventListener("click",()=>{
 });
 // ── P15：多语言（中/英）+ 可访问性 ──
 const OCP_I18N={
-  zh:{nav_overview:"概览",nav_docker:"容器",nav_resources:"资源",nav_logs:"容器日志",nav_nginx:"Nginx 站点",nav_fs:"文件管理",nav_task:"后台任务",nav_term:"终端",nav_net:"网卡流量",nav_proc:"进程",nav_svc:"服务",nav_health:"主机体检",nav_diag:"链路诊断",nav_chart:"历史趋势",nav_ai:"AI 助手",nav_system:"系统中心",nav_settings:"设置",nav_apps:"应用市场",nav_cluster:"集群",nav_vms:"虚拟机",page_overview:"概览",agent_down:"ocp-agent 当前不可达，以下为错误详情",mode_btn:"桌面模式",mode_btn_on:"经典模式",lang_btn:"EN",lang_title:"切换语言 / Switch language"},
-  en:{nav_overview:"Overview",nav_docker:"Containers",nav_resources:"Resources",nav_logs:"Container Logs",nav_nginx:"Nginx Sites",nav_fs:"File Manager",nav_task:"Background Tasks",nav_term:"Terminal",nav_net:"Network Traffic",nav_proc:"Processes",nav_svc:"Services",nav_health:"Host Health",nav_diag:"Link Diagnostics",nav_chart:"History Trend",nav_ai:"AI Assistant",nav_system:"System Center",nav_settings:"Settings",nav_apps:"App Market",nav_cluster:"Cluster",nav_vms:"Virtual Machines",page_overview:"Overview",agent_down:"ocp-agent unreachable, details below",mode_btn:"Desktop Mode",mode_btn_on:"Classic Mode",lang_btn:"中文",lang_title:"Switch language"}
+  zh:{nav_overview:"概览",nav_docker:"容器",nav_resources:"资源",nav_logs:"容器日志",nav_nginx:"Nginx 站点",nav_fs:"文件管理",nav_task:"后台任务",nav_term:"终端",nav_net:"网卡流量",nav_proc:"进程",nav_svc:"服务",nav_health:"主机体检",nav_diag:"链路诊断",nav_chart:"历史趋势",nav_ai:"AI 助手",nav_system:"系统中心",nav_settings:"设置",nav_apps:"应用市场",nav_cluster:"集群",nav_vms:"虚拟机",page_overview:"概览",agent_down:"ocp-agent 当前不可达，以下为错误详情",mode_btn:"桌面模式",mode_btn_on:"经典模式",lang_btn:"EN",lang_title:"切换语言 / Switch language",live_monitoring:"实时监控",live_monitoring_sub:"选择指标查看历史趋势",agent_online:"Agent online",system_info:"系统信息",system_info_sub:"主机与操作系统详情",status_normal:"正常",network_location:"网络与位置",network_location_sub:"公网与本地网络标识",status_public_recognized:"外网已识别",resource_summary:"资源与一致性",resource_summary_sub:"网站、Docker 与来源汇总",res_sites:"网站",res_containers:"容器",res_images:"镜像",system_manage:"系统管理",system_manage_sub:"常用系统工具快捷入口",tool_docker:"容器管理",tool_fs:"文件管理",tool_nginx:"Nginx 站点",tool_svc:"服务状态",tool_health:"主机体检",tool_diag:"链路诊断",core_services:"核心服务",core_services_sub:"关键服务运行状态"},
+  en:{nav_overview:"Overview",nav_docker:"Containers",nav_resources:"Resources",nav_logs:"Container Logs",nav_nginx:"Nginx Sites",nav_fs:"File Manager",nav_task:"Background Tasks",nav_term:"Terminal",nav_net:"Network Traffic",nav_proc:"Processes",nav_svc:"Services",nav_health:"Host Health",nav_diag:"Link Diagnostics",nav_chart:"History Trend",nav_ai:"AI Assistant",nav_system:"System Center",nav_settings:"Settings",nav_apps:"App Market",nav_cluster:"Cluster",nav_vms:"Virtual Machines",page_overview:"Overview",agent_down:"ocp-agent unreachable, details below",mode_btn:"Desktop Mode",mode_btn_on:"Classic Mode",lang_btn:"中文",lang_title:"Switch language",live_monitoring:"Live Monitoring",live_monitoring_sub:"Select a metric to view its history",agent_online:"Agent online",system_info:"System Info",system_info_sub:"Host & OS details",status_normal:"Normal",network_location:"Network & Location",network_location_sub:"Public & local network identity",status_public_recognized:"Public IP recognized",resource_summary:"Resource Summary",resource_summary_sub:"Sites, Docker & sources",res_sites:"Sites",res_containers:"Containers",res_images:"Images",system_manage:"System Management",system_manage_sub:"Quick tools",tool_docker:"Containers",tool_fs:"Files",tool_nginx:"Nginx Sites",tool_svc:"Services",tool_health:"Health",tool_diag:"Diagnostics",core_services:"Core Services",core_services_sub:"Key service status"}
 };
 function ocpT(key){const l=ocpCurLang();return (OCP_I18N[l]&&OCP_I18N[l][key])||OCP_I18N.zh[key]||key}
 function ocpStoreGet(k){try{if(typeof localStorage==="undefined")return null;return localStorage.getItem(k)}catch{return null}}

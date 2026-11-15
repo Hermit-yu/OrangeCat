@@ -112,6 +112,7 @@ func main() {
 	mux.HandleFunc("/api/docker", p.requireAuth(p.handleDocker))
 	mux.HandleFunc("/api/nginx", p.requireAuth(p.handleNginx))
 	mux.HandleFunc("/api/net", p.requireAuth(p.handleNet))
+	mux.HandleFunc("/api/net/public", p.requireAuth(p.handleNetPublic))
 	mux.HandleFunc("/api/processes", p.requireAuth(p.handleProcesses))
 	mux.HandleFunc("/api/services", p.requireAuth(p.handleServices))
 	mux.HandleFunc("/api/health", p.requireAuth(p.handleHealth))
