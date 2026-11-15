@@ -29,6 +29,8 @@ var actions = []string{
 	"compose.projects",
 	"compose.validate",
 	"nginx.sites",
+	"nginx.sites.full",
+	"nginx.test",
 	"net.interfaces",
 	"processes",
 }

@@ -18,6 +18,7 @@ const (
 	TypeLogout          = "logout"
 	TypeProcessKill     = "process_kill"
 	TypeContainerAction = "container_action"
+	TypeNginxAction     = "nginx_action"
 
 	OutcomeSuccess  = "success"
 	OutcomeRejected = "rejected"
@@ -40,6 +41,9 @@ const (
 	ReasonContainerActionSent   = "container_action_sent"
 	ReasonContainerActionFailed = "container_action_failed"
 	ReasonContainerRequestBad   = "container_request_invalid"
+	ReasonNginxActionSent       = "nginx_action_sent"
+	ReasonNginxActionFailed     = "nginx_action_failed"
+	ReasonNginxRequestBad       = "nginx_request_invalid"
 )
 
 var allowedReasons = map[string]struct{}{
@@ -50,6 +54,7 @@ var allowedReasons = map[string]struct{}{
 	ReasonKillSignalSent: {}, ReasonKillRejected: {}, ReasonKillRequestInvalid: {},
 	ReasonKillPIDInitForbidden: {},
 	ReasonContainerActionSent:  {}, ReasonContainerActionFailed: {}, ReasonContainerRequestBad: {},
+	ReasonNginxActionSent: {}, ReasonNginxActionFailed: {}, ReasonNginxRequestBad: {},
 }
 
 // Event deliberately has no username, password, cookie, token, URL, or body fields.
@@ -130,7 +135,7 @@ func openLog(path string) (*os.File, error) {
 }
 
 func (w *Writer) Record(event Event) error {
-	if event.Type != TypeLogin && event.Type != TypeLogout && event.Type != TypeProcessKill && event.Type != TypeContainerAction {
+	if event.Type != TypeLogin && event.Type != TypeLogout && event.Type != TypeProcessKill && event.Type != TypeContainerAction && event.Type != TypeNginxAction {
 		return fmt.Errorf("invalid auth event type %q", event.Type)
 	}
 	if event.Outcome != OutcomeSuccess && event.Outcome != OutcomeRejected {

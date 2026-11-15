@@ -62,7 +62,7 @@ section{margin-top:22px}section h2{font-size:14px;color:var(--dim);margin:0 0 10
   <section><h2>容器（实时）<span class="dim muted">· 可操作</span></h2><div class="card table-card"><table id="dockerT"><thead><tr><th>名称</th><th>状态</th><th>镜像</th><th>端口</th><th>详情</th><th>操作</th></tr></thead><tbody></tbody></table></div></section>
   <section><h2>镜像 / 网络 / 卷（只读）</h2><span class="dim muted">首次自动加载，之后点刷新</span> <button id="imgRefresh" class="logout-button">刷新</button><div class="card table-card padtop"><table id="imgT"><thead><tr><th>仓库</th><th>标签</th><th>大小</th><th>ID</th></tr></thead><tbody></tbody></table></div><div class="card table-card padtop"><table id="netT2"><thead><tr><th>名称</th><th>驱动</th><th>范围</th><th>容器</th></tr></thead><tbody></tbody></table></div><div class="card table-card padtop"><table id="volT"><thead><tr><th>名称</th><th>驱动</th><th>使用容器</th><th>挂载点</th></tr></thead><tbody></tbody></table></div></section>
   <section><h2>容器日志（有界）</h2><input id="logName" placeholder="容器名" class="pad"><input id="logLines" value="100" placeholder="行数" class="pad"><button id="btnLogs" class="logout-button">查看日志</button><div id="logOut" class="card padtop small logbox"><div class="dim">输入容器名后查看</div></div></section>
-  <section><h2>Nginx 站点（发现优先，只读）</h2><div class="card table-card"><table id="nginxT"><thead><tr><th>server_name</th><th>配置文件</th><th>证书</th></tr></thead><tbody></tbody></table></div></section>
+  <section><h2>Nginx 站点（P3 发现，只读）</h2><div class="card table-card"><table id="nginxT"><thead><tr><th>server_name</th><th>配置文件</th><th>证书</th><th>到期</th><th>proxy</th></tr></thead><tbody></tbody></table></div><div class="card padtop small"><button id="btnNginxTest" class="logout-button">校验配置（nginx -t）</button> <button id="btnNginxReload" class="logout-button">重载生效</button><div id="nginxActionOut" class="padtop dim"></div></div></section>
   <section><h2>网卡流量计数</h2><div class="card table-card"><table id="netT"><thead><tr><th>接口</th><th>rx</th><th>tx</th></tr></thead><tbody></tbody></table></div></section>
   <section><h2>进程 Top（按内存）<span class="dim muted">· 可结束</span></h2><div class="card table-card"><table id="procT"><thead><tr><th>PID</th><th>名称</th><th>UID</th><th>RSS MB</th><th>操作</th></tr></thead><tbody></tbody></table></div></section>
   <section><h2>服务状态（实时，只读）</h2><input id="svcFilter" placeholder="按名称过滤…" class="pad"><div class="card table-card"><table id="svcT"><thead><tr><th>单元</th><th>loaded</th><th>active</th><th>sub</th></tr></thead><tbody></tbody></table></div></section>
@@ -124,7 +124,9 @@ async function refresh(){
   }));
   const ntb=document.querySelector("#nginxT tbody");
   const ns=(ng.sites&&ng.sites.sites)||[];
-  ntb.innerHTML=ns.map(s=>`<tr><td>${esc((s.names||[]).join(" "))}</td><td>${esc(s.file)}</td><td class="dim">${esc(s.certs?.cert||"无")}</td></tr>`).join("")||`<tr><td colspan="3" class="dim">未发现站点</td></tr>`;
+  ntb.innerHTML=ns.map(s=>`<tr><td>${esc((s.names||[]).join(" "))}</td><td>${esc(s.file)}</td><td class="dim">${esc(s.certs?.cert_host||s.certs?.cert||"无")}</td><td class="dim">${s.expires ? (esc(s.expires.notAfter) + " (" + s.expires.days_left + " 天)") : ""}</td><td class="dim">${s.proxy?"是":"否"}</td><td><button class="actbtn btn-test" data-file="${esc(s.file)}" data-action="test">test</button> <button class="actbtn btn-reload" data-file="${esc(s.file)}" data-action="reload">reload</button></td></tr>`).join("")||`<tr><td colspan="6" class="dim">未发现站点</td></tr>`;
+  ntb.querySelectorAll('.btn-test').forEach(b=>b.addEventListener("click",async()=>{await handleNginxTest()}));
+  ntb.querySelectorAll('.btn-reload').forEach(b=>b.addEventListener("click",async()=>{await handleNginxReload()}));
   if(imgRefresh.dataset.loaded!=="1"||imgRefresh.dataset.dirty==="1")loadDockerResources();
   const pnb=document.querySelector("#netT tbody");
   const nts=(nx.interfaces&&nx.interfaces.interfaces)||[];
@@ -138,6 +140,34 @@ async function refresh(){
   if(svcFilter.dataset.loaded!=="1"||svcFilter.dataset.last!==svcFilter.value)loadServices();
   if(chartInfo.dataset.loaded!=="1")loadChart();
 }
+
+// Nginx test/reload 按钮
+async function handleNginxTest(){
+  const out=document.getElementById("nginxActionOut");
+  out.innerHTML='<div class="dim">操作中…</div>';
+  try{
+    const csrf=csrfCookie();
+    const r=await fetch(APP_BASE+"/api/nginx/action",{method:"POST",credentials:"same-origin",headers:{'X-CSRF-Token':csrf},body:JSON.stringify({action:"test"})});
+    const text=await r.text();let d;try{d=JSON.parse(text)}catch{d={raw:text}};
+    if(!r.ok||!d.ok){out.innerHTML='<div class="err">未执行：'+esc(d.agent_error||d.raw||("HTTP "+r.status))+'</div>';return}
+    const res=(d.result||{}).output||'未知';
+    out.innerHTML='<div class="logdim">已执行：'+esc(res.length>50?res.substring(0,50)+"…":res)+'</div>';
+  }catch(e){out.innerHTML='<div class="logdim">请求失败：'+esc(e)+'</div>'}
+}
+async function handleNginxReload(){
+  const out=document.getElementById("nginxActionOut");
+  out.innerHTML='<div class="dim">操作中…</div>';
+  try{
+    const csrf=csrfCookie();
+    const r=await fetch(APP_BASE+"/api/nginx/action",{method:"POST",credentials:"same-origin",headers:{'X-CSRF-Token':csrf},body:JSON.stringify({action:"reload"})});
+    const text=await r.text();let d;try{d=JSON.parse(text)}catch{d={raw:text}};
+    if(!r.ok||!d.ok){out.innerHTML='<div class="err">未执行：'+esc(d.agent_error||d.raw||("HTTP "+r.status))+'</div>';return}
+    const res=(d.result||{}).output||'未知';
+    out.innerHTML='<div class="logdim">已执行：'+esc(res.length>50?res.substring(0,50)+"…":res)+'</div>';
+  }catch(e){out.innerHTML='<div class="logdim">请求失败：'+esc(e)+'</div>'}
+}
+document.getElementById("btnNginxTest").addEventListener("click",handleNginxTest);
+document.getElementById("btnNginxReload").addEventListener("click",handleNginxReload);
 async function loadServices(){svcFilter.dataset.last=svcFilter.value;const f=encodeURIComponent(svcFilter.value||"");const r=await fetch(APP_BASE+"/api/services?filter="+f,{credentials:"same-origin"});const d=await r.json();const svc=(d.services&&d.services.services)||[];const tb=document.querySelector("#svcT tbody");tb.innerHTML=svc.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.loaded)}</td><td>${esc(s.active)}</td><td>${esc(s.sub)}</td></tr>`).join("")||`<tr><td colspan="4" class="dim">服务数据暂不可用：${esc(d.agent_error||"未返回数据")}</td></tr>`;svcFilter.dataset.loaded="1";}
 svcFilter.addEventListener("change",loadServices);
 // 镜像/网络/卷：每条都要 docker inspect 才能拿到成员与使用者，放进 5 秒轮询会打爆

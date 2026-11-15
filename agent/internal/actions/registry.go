@@ -59,6 +59,9 @@ func NewRegistry() *Registry {
 	r.Register("compose.projects", noParams(ComposeProjects))
 	r.Register("compose.validate", ComposeValidate)
 	r.Register("nginx.sites", noParams(NginxSites))
+	r.Register("nginx.sites.full", noParams(NginxSitesP3))
+	r.Register("nginx.test", NginxTest)
+	r.Register("nginx.reload", NginxReload)
 	r.Register("net.interfaces", noParams(NetInterfaces))
 	r.Register("processes", Processes)
 	return r
