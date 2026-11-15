@@ -1,0 +1,16 @@
+# Build context hygiene — never copy repo internals into the image.
+.git
+.github
+docs
+*.md
+scripts
+installer
+vendor
+.ocp-backups
+testdata
+*_test.go
+*.test
+*.out
+Dockerfile
+.dockerignore
+docker-compose.yml
