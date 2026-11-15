@@ -14,14 +14,22 @@ function createApp(cookie) {
     addEventListener() {},
     querySelectorAll: () => [],
     dataset: {},
-    classList: { add() {}, remove() {} },
+    classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
     value: "",
     textContent: "",
     innerHTML: "",
+    style: {},
   });
   const docEl = el();
   const sandbox = {
+    localStorage: {
+      _store: {},
+      getItem(k) { return this._store[k] ?? null; },
+      setItem(k, v) { this._store[k] = String(v); },
+      removeItem(k) { delete this._store[k]; },
+    },
     document: {
+      body: docEl,
       cookie,
       getElementById: (id) => (id === "btnHealth" ? docEl : (id === "btnDiag" ? docEl : (id === "svcFilter" ? docEl : docEl))),
       querySelector: el,

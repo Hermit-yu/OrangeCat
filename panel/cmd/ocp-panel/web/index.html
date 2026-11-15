@@ -125,6 +125,11 @@ body{background:var(--page-ambient);color:var(--text);font:14px/1.55 var(--font)
 /* P12：经典/桌面双模式 */
 .mode-btn{font-size:12px;padding:6px 12px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:6px;cursor:pointer}
 .mode-btn:hover{background:var(--surface2)}
+/* P15：语言切换 + 可访问性（键盘焦点可见） */
+.lang-btn{font-size:12px;padding:6px 10px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:6px;cursor:pointer;min-width:64px}
+.lang-btn:hover{background:var(--surface2)}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+button:focus-visible,a:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 .ocp-desktop{display:none;position:fixed;inset:var(--topbar-height) 0 0 0;background:var(--surface2);overflow:hidden}
 body.mode-desktop .ocp-desktop{display:block}
 body.mode-desktop .app-shell{display:none}
@@ -455,26 +460,26 @@ section .panel-card{margin-bottom:22px}
       <div class="brand__text">橘猫运维<small>OrangeCatPanel</small></div>
     </div>
     <nav class="sidebar__nav" id="navMain">
-      <button class="sidebar__link router-link-active" data-target="secOverview"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-overview"></use></svg></span>概览</button>
-      <button class="sidebar__link" data-target="secDocker"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-docker"></use></svg></span>容器</button>
-      <button class="sidebar__link" data-target="secResources"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-resources"></use></svg></span>资源</button>
-      <button class="sidebar__link" data-target="secLogs"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-logs"></use></svg></span>容器日志</button>
-      <button class="sidebar__link" data-target="secNginx"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-nginx"></use></svg></span>Nginx 站点</button>
-      <button class="sidebar__link" data-target="secFs"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-fs"></use></svg></span>文件管理</button>
-      <button class="sidebar__link" data-target="secTask"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-task"></use></svg></span>后台任务</button>
-      <button class="sidebar__link" data-target="secTerm"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-term"></use></svg></span>终端</button>
-      <button class="sidebar__link" data-target="secNet"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-net"></use></svg></span>网卡流量</button>
-      <button class="sidebar__link" data-target="secProc"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-proc"></use></svg></span>进程</button>
-      <button class="sidebar__link" data-target="secSvc"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-svc"></use></svg></span>服务</button>
-      <button class="sidebar__link" data-target="secHealth"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-health"></use></svg></span>主机体检</button>
-      <button class="sidebar__link" data-target="secDiag"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-diag"></use></svg></span>链路诊断</button>
-      <button class="sidebar__link" data-target="secChart"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-chart"></use></svg></span>历史趋势</button>
-      <button class="sidebar__link" data-target="secAI"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-ai"></use></svg></span>AI 助手</button>
-      <button class="sidebar__link" data-target="secSystem"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-system"></use></svg></span>系统中心</button>
-      <button class="sidebar__link" data-target="secSettings"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-settings"></use></svg></span>设置</button>
-      <button class="sidebar__link" data-target="secApps"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-apps"></use></svg></span>应用市场</button>
-      <button class="sidebar__link" data-target="secCluster"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-cluster"></use></svg></span>集群</button>
-      <button class="sidebar__link" data-target="secVms"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-vms"></use></svg></span>虚拟机</button>
+      <button class="sidebar__link router-link-active" data-target="secOverview" data-i18n="nav_overview"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-overview"></use></svg></span><span data-i18n="nav_overview">概览</span></button>
+      <button class="sidebar__link" data-target="secDocker" data-i18n="nav_docker"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-docker"></use></svg></span><span data-i18n="nav_docker">容器</span></button>
+      <button class="sidebar__link" data-target="secResources" data-i18n="nav_resources"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-resources"></use></svg></span><span data-i18n="nav_resources">资源</span></button>
+      <button class="sidebar__link" data-target="secLogs" data-i18n="nav_logs"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-logs"></use></svg></span><span data-i18n="nav_logs">容器日志</span></button>
+      <button class="sidebar__link" data-target="secNginx" data-i18n="nav_nginx"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-nginx"></use></svg></span><span data-i18n="nav_nginx">Nginx 站点</span></button>
+      <button class="sidebar__link" data-target="secFs" data-i18n="nav_fs"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-fs"></use></svg></span><span data-i18n="nav_fs">文件管理</span></button>
+      <button class="sidebar__link" data-target="secTask" data-i18n="nav_task"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-task"></use></svg></span><span data-i18n="nav_task">后台任务</span></button>
+      <button class="sidebar__link" data-target="secTerm" data-i18n="nav_term"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-term"></use></svg></span><span data-i18n="nav_term">终端</span></button>
+      <button class="sidebar__link" data-target="secNet" data-i18n="nav_net"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-net"></use></svg></span><span data-i18n="nav_net">网卡流量</span></button>
+      <button class="sidebar__link" data-target="secProc" data-i18n="nav_proc"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-proc"></use></svg></span><span data-i18n="nav_proc">进程</span></button>
+      <button class="sidebar__link" data-target="secSvc" data-i18n="nav_svc"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-svc"></use></svg></span><span data-i18n="nav_svc">服务</span></button>
+      <button class="sidebar__link" data-target="secHealth" data-i18n="nav_health"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-health"></use></svg></span><span data-i18n="nav_health">主机体检</span></button>
+      <button class="sidebar__link" data-target="secDiag" data-i18n="nav_diag"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-diag"></use></svg></span><span data-i18n="nav_diag">链路诊断</span></button>
+      <button class="sidebar__link" data-target="secChart" data-i18n="nav_chart"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-chart"></use></svg></span><span data-i18n="nav_chart">历史趋势</span></button>
+      <button class="sidebar__link" data-target="secAI" data-i18n="nav_ai"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-ai"></use></svg></span><span data-i18n="nav_ai">AI 助手</span></button>
+      <button class="sidebar__link" data-target="secSystem" data-i18n="nav_system"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-system"></use></svg></span><span data-i18n="nav_system">系统中心</span></button>
+      <button class="sidebar__link" data-target="secSettings" data-i18n="nav_settings"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-settings"></use></svg></span><span data-i18n="nav_settings">设置</span></button>
+      <button class="sidebar__link" data-target="secApps" data-i18n="nav_apps"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-apps"></use></svg></span><span data-i18n="nav_apps">应用市场</span></button>
+      <button class="sidebar__link" data-target="secCluster" data-i18n="nav_cluster"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-cluster"></use></svg></span><span data-i18n="nav_cluster">集群</span></button>
+      <button class="sidebar__link" data-target="secVms" data-i18n="nav_vms"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-vms"></use></svg></span><span data-i18n="nav_vms">虚拟机</span></button>
     </nav>
     <div class="sidebar__footer">
       <div class="sidebar__agent" id="agentStatusBox">
@@ -490,15 +495,16 @@ section .panel-card{margin-bottom:22px}
   </aside>
   <div class="app-shell__main">
     <header class="topbar">
-      <div class="topbar__title" id="pageTitle">概览<span class="dim" id="hostLabelTop"></span></div>
+      <div class="topbar__title" id="pageTitle"><span data-i18n="page_overview">概览</span><span class="dim" id="hostLabelTop"></span></div>
       <div class="topbar__actions">
+        <button id="btnLang" class="lang-btn" title="切换语言 / Switch language" aria-label="切换语言">EN</button>
         <button id="btnMode" class="mode-btn" title="切换经典/桌面模式">桌面模式</button>
         <button id="btnRefresh" class="icon-button" title="刷新">⟳</button>
       </div>
     </header>
     <main class="page-content">
       <div class="page" id="pageContent">
-        <div id="agentDown" class="agentdown-inline hidden">ocp-agent 当前不可达，以下为错误详情</div>
+        <div id="agentDown" class="agentdown-inline hidden" data-i18n="agent_down">ocp-agent 当前不可达，以下为错误详情</div>
         <!-- 概览 -->
         <section id="secOverview" class="view">
           <!-- 1. 实时监控 -->
@@ -1906,6 +1912,37 @@ document.getElementById("btnBgClear").addEventListener("click",()=>{
   ocpApplyBg();
   const msg=document.getElementById("bgMsg");if(msg)msg.textContent="背景已清除";
 });
+// ── P15：多语言（中/英）+ 可访问性 ──
+const OCP_I18N={
+  zh:{nav_overview:"概览",nav_docker:"容器",nav_resources:"资源",nav_logs:"容器日志",nav_nginx:"Nginx 站点",nav_fs:"文件管理",nav_task:"后台任务",nav_term:"终端",nav_net:"网卡流量",nav_proc:"进程",nav_svc:"服务",nav_health:"主机体检",nav_diag:"链路诊断",nav_chart:"历史趋势",nav_ai:"AI 助手",nav_system:"系统中心",nav_settings:"设置",nav_apps:"应用市场",nav_cluster:"集群",nav_vms:"虚拟机",page_overview:"概览",agent_down:"ocp-agent 当前不可达，以下为错误详情",mode_btn:"桌面模式",mode_btn_on:"经典模式",lang_btn:"EN",lang_title:"切换语言 / Switch language"},
+  en:{nav_overview:"Overview",nav_docker:"Containers",nav_resources:"Resources",nav_logs:"Container Logs",nav_nginx:"Nginx Sites",nav_fs:"File Manager",nav_task:"Background Tasks",nav_term:"Terminal",nav_net:"Network Traffic",nav_proc:"Processes",nav_svc:"Services",nav_health:"Host Health",nav_diag:"Link Diagnostics",nav_chart:"History Trend",nav_ai:"AI Assistant",nav_system:"System Center",nav_settings:"Settings",nav_apps:"App Market",nav_cluster:"Cluster",nav_vms:"Virtual Machines",page_overview:"Overview",agent_down:"ocp-agent unreachable, details below",mode_btn:"Desktop Mode",mode_btn_on:"Classic Mode",lang_btn:"中文",lang_title:"Switch language"}
+};
+function ocpT(key){const l=ocpCurLang();return (OCP_I18N[l]&&OCP_I18N[l][key])||OCP_I18N.zh[key]||key}
+function ocpStoreGet(k){try{if(typeof localStorage==="undefined")return null;return localStorage.getItem(k)}catch{return null}}
+function ocpStoreSet(k,v){try{if(typeof localStorage==="undefined")return;localStorage.setItem(k,v)}catch{}}
+function ocpCurLang(){return ocpStoreGet("ocpLang")==="en"?"en":"zh"}
+function ocpApplyLang(){
+  const l=ocpCurLang();
+  try{document.documentElement.lang=l==="en"?"en":"zh-CN"}catch{}
+  const map=OCP_I18N[l]||OCP_I18N.zh;
+  const nav=document.getElementById("navMain");
+  if(nav&&typeof nav.querySelectorAll==="function"){
+    nav.querySelectorAll("[data-i18n]").forEach(el=>{
+      const k=el.getAttribute("data-i18n");
+      if(k&&map[k]!==undefined)el.textContent=map[k];
+    });
+  }
+  const btn=document.getElementById("btnLang");
+  if(btn){btn.textContent=l==="en"?"中文":"EN";btn.title=map.lang_title||""}
+  const mbtn=document.getElementById("btnMode");
+  if(mbtn){mbtn.textContent=l==="en"?"Desktop Mode":"桌面模式";try{if(document.body.classList.contains("mode-desktop"))mbtn.textContent=l==="en"?"Classic Mode":"经典模式"}catch{}}
+  const pt=document.getElementById("pageTitle");
+  if(pt){const s=pt.querySelector("span");if(s)s.textContent=map.page_overview||"概览"}
+  ocpStoreSet("ocpLang",l);
+}
+function ocpTogLang(){ocpStoreSet("ocpLang",ocpCurLang()==="en"?"zh":"en");ocpApplyLang()}
+document.getElementById("btnLang").addEventListener("click",ocpTogLang);
+try{ocpApplyLang()}catch{}
 (async()=>{const r=await fetch(APP_BASE+"/api/overview",{credentials:"same-origin"});if(r.status===401)return;refresh().catch(()=>{});setInterval(()=>refresh().catch(()=>{}),5000)})();</script>
 </body>
 </html>
