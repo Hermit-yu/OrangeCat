@@ -388,6 +388,7 @@ async function refresh(){
   document.getElementById("dash").classList.remove("hidden");
   document.getElementById("btnLogout").classList.remove("hidden");
   loginBox.classList.add("hidden");
+  const lw=loginBox.parentElement;if(lw)lw.classList.add("hidden");
 
   const errs=[];for(const k of["system.info","system.metrics"])if(ov.agent_errors&&ov.agent_errors[k])errs.push(k+":"+ov.agent_errors[k]);
   if(errs.length){agentDown.classList.remove("hidden");agentDown.textContent="agent 部分不可达 → "+errs.join("；");const d=document.getElementById("agentDot");if(d)d.className="dot down";const l=document.getElementById("agentLabel");if(l)l.textContent="ocp-agent 部分不可达";}
