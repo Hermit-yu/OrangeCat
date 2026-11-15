@@ -125,6 +125,15 @@ func (p *panel) handleComposeValidate(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"validate": data, "agent_error": errStr(err)})
 }
 
+func (p *panel) handleComposeStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method", http.StatusMethodNotAllowed)
+		return
+	}
+	data, err := p.clients.Call("compose.status", nil)
+	writeJSON(w, map[string]any{"compose": data, "agent_error": errStr(err)})
+}
+
 // ---------- P2 写接口：容器生命周期 ----------
 
 // containerActions is the closed write surface. Anything else — including

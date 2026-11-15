@@ -90,6 +90,74 @@ func ComposeProjects(ctx context.Context, p map[string]any) (map[string]any, err
 	return map[string]any{"available": true, "projects": found, "count": len(found)}, nil
 }
 
+// ComposeStatus reports the real per-project service state: total services
+// (from `docker compose config --services`) and currently running services
+// (from `docker compose ps -q`). It only touches known allowlisted project
+// files; it never starts or modifies anything.
+func ComposeStatus(ctx context.Context, p map[string]any) (map[string]any, error) {
+	if len(p) != 0 {
+		return nil, fmt.Errorf("compose.status accepts no parameters")
+	}
+	projects := composeProjectPaths()
+	statuses := []map[string]any{}
+	for _, path := range projects {
+		info, err := os.Stat(path)
+		if err != nil || info.IsDir() {
+			continue
+		}
+		project := strings.Trim(strings.TrimPrefix(filepath.Dir(path), "/"), "/")
+		if project == "" {
+			project = "root"
+		}
+		statuses = append(statuses, composeProjectStatus(ctx, path, project))
+	}
+	if statuses == nil {
+		statuses = []map[string]any{}
+	}
+	return map[string]any{"available": true, "projects": statuses, "count": len(statuses)}, nil
+}
+
+// composeProjectStatus runs the two read-only docker compose queries for one
+// project file and folds them into a status row. Both commands fail soft: a
+// query error never fails the whole listing.
+func composeProjectStatus(ctx context.Context, path, project string) map[string]any {
+	row := map[string]any{"path": path, "project": project}
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+
+	// total services: `docker compose config --services` (no containers started)
+	out, err := exec.CommandContext(ctx, "docker", "compose", "-f", path, "config", "--services").Output()
+	if err != nil {
+		row["error"] = err.Error()
+		return row
+	}
+	services := []string{}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			services = append(services, line)
+		}
+	}
+	row["services"] = services
+	row["service_count"] = len(services)
+
+	// running: `docker compose ps -q` returns only running container IDs.
+	out2, err := exec.CommandContext(ctx, "docker", "compose", "-f", path, "ps", "-q").Output()
+	if err != nil {
+		row["running"] = 0
+		row["running_error"] = err.Error()
+		return row
+	}
+	running := 0
+	for _, line := range strings.Split(strings.TrimSpace(string(out2)), "\n") {
+		if strings.TrimSpace(line) != "" {
+			running++
+		}
+	}
+	row["running"] = running
+	return row
+}
+
 // ComposeValidate runs `docker compose config --quiet` against an already-known
 // project file. That command is a pure interpolation/syntax check — it starts
 // nothing and modifies nothing — so it is safe to expose as a read-only action.

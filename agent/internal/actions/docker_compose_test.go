@@ -6,6 +6,12 @@ import (
 )
 
 // TestComposeProjectsRejectsParameters pins the discovery action is read-only.
+func TestComposeStatusRejectsParameters(t *testing.T) {
+	if _, err := ComposeStatus(context.Background(), map[string]any{"path": "x"}); err == nil {
+		t.Fatal("compose.status should reject any parameter")
+	}
+}
+
 func TestComposeProjectsRejectsParameters(t *testing.T) {
 	if _, err := ComposeProjects(context.Background(), map[string]any{"path": "/etc"}); err == nil {
 		t.Fatal("compose.projects must reject parameters")

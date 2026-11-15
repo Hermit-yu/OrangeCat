@@ -58,6 +58,7 @@ func NewRegistry() *Registry {
 	r.Register("docker.container.action", DockerContainerAction)
 	r.Register("compose.projects", noParams(ComposeProjects))
 	r.Register("compose.validate", ComposeValidate)
+	r.Register("compose.status", noParams(ComposeStatus))
 	r.Register("nginx.sites", noParams(NginxSites))
 	r.Register("nginx.sites.full", noParams(NginxSitesP3))
 	r.Register("nginx.test", NginxTest)

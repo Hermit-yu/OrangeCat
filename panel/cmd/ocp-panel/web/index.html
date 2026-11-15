@@ -260,6 +260,19 @@ section .panel-card{margin-bottom:22px}
 .st-needs_review{color:#c98a1b;border-color:#c98a1b;background:rgba(201,138,27,.1)}
 .st-config_only{color:var(--text-muted);border-color:var(--border);background:var(--surface-raised)}
 .sites-detail{margin:4px 0 8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:260px;overflow:auto}
+/* Compose 项目卡片 */
+.compose-section{margin-bottom:18px}
+.compose-head{font-size:12px;color:var(--text-muted);margin-bottom:10px}
+.compose-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.compose-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;padding:14px}
+.compose-card__name{font-weight:600;font-size:13px;color:var(--text);margin-bottom:6px;word-break:break-all}
+.compose-card__path{font-size:11px;color:var(--text-muted);word-break:break-all;margin-bottom:8px}
+.compose-card__status{display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:10px}
+.compose-card__status .dot{width:7px;height:7px;border-radius:50%;background:#3f9d63}
+.compose-card__status .dot.off{background:#9b948a}
+.compose-card__row{display:flex;gap:8px;flex-wrap:wrap}
+.compose-card__row .logout-button{font-size:11px;padding:4px 10px}
+.compose-card__err{font-size:11px;color:var(--danger);margin-top:6px}
 .ai-err{color:var(--danger);font-size:12px;padding:0 2px}
 .ai-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-muted);padding:40px}
 .ai-empty .ai-empty__icon{width:52px;height:52px;border-radius:14px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center}
@@ -436,6 +449,10 @@ section .panel-card{margin-bottom:22px}
         <!-- 容器 -->
         <section id="secDocker" class="view hidden">
           <div class="section-head">容器（实时 · 可操作）</div>
+          <div class="compose-section" id="composeSection">
+            <div class="compose-head">Compose 项目</div>
+            <div id="composeCards" class="compose-cards"></div>
+          </div>
           <div class="panel-card pad0">
             <table id="dockerT"><thead><tr><th>名称</th><th>状态</th><th>镜像</th><th>端口</th><th>详情</th><th>操作</th></tr></thead><tbody></tbody></table>
           </div>
@@ -753,6 +770,7 @@ async function refresh(){
     }catch(e){box.querySelector(".sites-detail").textContent="请求失败："+e}
   }));
   if(imgRefresh.dataset.loaded!=="1"||imgRefresh.dataset.dirty==="1")loadDockerResources();
+  if(!window.__composeInit){window.__composeInit=1;loadCompose().catch(()=>{})}
   const pnb=document.querySelector("#netT tbody");
   const nts=(nx.interfaces&&nx.interfaces.interfaces)||[];
   pnb.innerHTML=nts.map(n=>`<tr><td>${esc(n.name)}</td><td>${fmtBytes(n.rx_bytes)}</td><td>${fmtBytes(n.tx_bytes)}</td></tr>`).join("")||`<tr><td colspan="3" class="dim">网卡数据暂不可用</td></tr>`;
@@ -1062,6 +1080,44 @@ async function loadDockerResources(){
   imgRefresh.disabled=false;imgRefresh.textContent="刷新";
 }
 document.getElementById("imgRefresh").addEventListener("click",()=>loadDockerResources().catch(e=>alert("加载失败："+e)));
+async function loadCompose(){
+  const box=document.getElementById("composeCards");
+  if(!box)return;
+  try{
+    const r=await fetch(APP_BASE+"/api/compose/status",{credentials:"same-origin"});
+    const j=await readJSONSafe(r);
+    const comp=(j.data&&j.data.compose)||{};
+    const projs=(comp.projects)||[];
+    if(!projs.length){box.innerHTML='<div class="dim">未发现 Compose 项目（白名单根 /home/web、/opt）</div>';return}
+    box.innerHTML=projs.map(p=>{
+      const total=p.service_count||0;
+      const running=p.running||0;
+      const allUp=total>0&&running===total;
+      const dotCls=allUp?"":" off";
+      const statusText=allUp?running+"/"+total+" 运行":(p.running_error?("运行查询失败："+esc(p.running_error)):(running+"/"+total+" 运行"));
+      return `<div class="compose-card">
+        <div class="compose-card__name">${esc(p.project)}</div>
+        <div class="compose-card__path">${esc(p.path)}</div>
+        <div class="compose-card__status"><span class="dot${dotCls}"></span>${statusText}</div>
+        <div class="compose-card__row">
+          <button class="logout-button btn-comp-validate" data-path="${esc(p.path)}">校验</button>
+          ${p.error?`<div class="compose-card__err">${esc(p.error)}</div>`:""}
+        </div>
+      </div>`;
+    }).join("");
+    box.querySelectorAll(".btn-comp-validate").forEach(b=>b.addEventListener("click",async()=>{
+      const path=b.dataset.path;
+      b.disabled=true;const old=b.textContent;b.textContent="校验中…";
+      try{
+        const r=await fetch(APP_BASE+"/api/compose/validate?path="+encodeURIComponent(path),{credentials:"same-origin"});
+        const j=await readJSONSafe(r);
+        const v=(j.data&&j.data.validate)||{};
+        alert((v.valid?"✓ 配置有效":"✗ 配置错误：")+((v.error||"")||""));
+      }catch(e){alert("请求失败："+e)}
+      finally{b.disabled=false;b.textContent=old}
+    }));
+  }catch(e){box.innerHTML='<div class="dim">Compose 加载失败：'+esc(e)+'</div>'}
+}
 function setDockerDirty(){imgRefresh.dataset.dirty="1"}
 document.getElementById("btnLogs").addEventListener("click",async()=>{
   const out=document.getElementById("logOut");const name=logName.value.trim();
