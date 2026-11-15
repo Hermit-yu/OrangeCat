@@ -147,7 +147,9 @@ section .panel-card{margin-bottom:22px}
 .agentdown-inline{background:var(--danger-soft);border:1px solid var(--danger-soft);color:var(--danger);padding:10px 14px;border-radius:var(--radius-sm);margin-bottom:14px;font-size:13px}
 
 /* ── 指标卡 ── */
-.metric-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media (max-width:1100px){.metric-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:600px){.metric-grid{grid-template-columns:1fr}}
 .metric-card{background:var(--surface-gradient);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow-xs)}
 .metric-card__top{font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px}
 .metric-card__value{font-size:26px;font-weight:700;color:var(--text)}
