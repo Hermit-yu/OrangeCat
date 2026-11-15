@@ -193,6 +193,35 @@
 - 生产验收（hermes.taoque.top/orangecat/）：浏览器编辑 /tmp scratch 真实写入（磁盘内容变化 + 快照记录）→ 点回滚（磁盘恢复原样 + 快照消费）→ 审计 write/rollback 均 success 留痕（来源 IP 正确）。
 - 已知未完成：上传/改名/删除、后台任务 API——均未设计实施。
 
+
+状态（2026-11-15）：改名/删除/恢复切片（P4-3）已完成并上线。
+- Agent `fs.rename`：已存在文件或空目录改名，目标已存在拒绝（不覆盖），跨设备诚实报错。
+- Agent `fs.remove`：删文件前快照内容（空目录记录 dir=true），`force` 必须显式 true；拒符号链接（防跳出）/非空目录。
+- Agent `fs.restore`：从快照恢复文件或重建空目录，目标路径显式传入（不接受从快照推导，防篡改）；恢复缺失目标时 chmod 0644。
+- 原子替换保留原文件权限与属主（`writeAtomicReplace` chmod 原 mode + chown 原 uid/gid，修复恢复后权限丢失问题）。
+- Panel `/api/fs/rename`、`/api/fs/remove`、`/api/fs/restore`：POST + `requireWriteAccess` 三重门 + 逐出口审计；审计类型 `fs_mutate` + 9 个原因（rename/remove/restore × sent/failed/request_invalid）。
+- 前端：文件表格“操作”列 + 行内改名/删除按钮 + 预览区“恢复文件”按钮；行内按钮绑定独立 forEach（元素级 + stopPropagation + closest("tr")）。
+- 探针：专用 seed→rename→remove→restore→内容恢复校验序列（/tmp scratch）；24/24 通过。
+- 生产验收（hermes.taoque.top/orangecat/）：rename（old-name→renamed 磁盘同步）、remove（gone.txt 消失 + 快照创建）、restore（快照恢复内容正确、权限 0644）；审计 rename/remove/restore 均 success 留痕（来源 IP 正确）。
+
+状态（2026-11-15）：上传/下载切片（P4-4）已完成并上线。
+- Agent `fs.upload`：新建或覆盖文件——目录必须存在，文件名拒绝路径穿越（不含分隔符/..），覆盖已存在文件先快照，原子替换（同 fs.write 纪律）；内容上限 1MiB。
+- Agent `fs.download`：返回文件内容 base64（含二进制，拒绝目录/符号链接），上限 256KB；panel 解码后以 `application/octet-stream` + `Content-Disposition: attachment` 流回。
+- Panel `POST /api/fs/upload`（multipart，`path` 目录 + `file`，1MiB 上限）、`GET /api/fs/download?path=`；两者走 `requireWriteAccess` 三重门（下载暴露文件内容，与 nginx.test 同理）逐出口审计；审计类型 `fs_upload` + 3 原因。
+- 前端：文件选择 + 上传按钮；文件行“下载”按钮（blob 下载）。
+- 探针：专用 upload→download 往返验证（/tmp scratch）；25/25 通过（含 upload/download 探针）。
+- 生产验收（hermes.taoque.top/orangecat/）：上传 /tmp scratch 新文件（磁盘内容正确 + 审计 fs_upload success）；下载 existing.txt 真实返回内容（octet-stream + attachment）。
+- 已知未完成：后台任务 API——见下。
+
+状态（2026-11-15）：后台任务切片（P4-5）已完成，P4 整体完成。
+- Agent `task.start`：异步执行固定白名单任务（`hostdiag` 只读，读取 hostname/uptime/load1），进程内任务注册表（跨请求有状态），任务类型未知拒绝；`task.status` 轮询状态/结果；`task.log` 返回有界环形日志（每任务最多 200 行，防日志无限增长）。
+- Panel `POST /api/task/start`（表单 `type=hostdiag`）、`GET /api/task/status|log?task_id=`；均 `requireAuth`（只读能力，不涉写门）。
+- 前端：后台任务卡片——主机体检按钮、状态显示、日志 pre。
+- 探针：task.start→status→log 循环验证（动态 task_id）；26/26 通过。
+- 生产验收（hermes.taoque.top/orangecat/）：点“主机体检”启动任务→轮询完成→日志有界显示（start hostdiag / hostname=taoque / uptime / load1 / done）。
+- P4 全切片交付：P4-1 只读、P4-2 写、P4-3 改名/删除/恢复、P4-4 上传/下载、P4-5 后台任务基础——均完成、部署生产、实机验收通过。
+- 已知未完成（P4 外）：compose up/down 路径白名单、Vite 全栈工具箱方向 2（仍内联 index.html）、P5+ 各切片。
+
 ### P5 — 受控终端与进程操作
 
 交付：默认关闭的 PTY 能力、独立开关、短时授权、连接/空闲/输出上限、主动关停、审计元信息；进程结束加启动时间校验。
