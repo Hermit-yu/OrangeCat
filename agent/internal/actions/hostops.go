@@ -95,7 +95,7 @@ func SystemMetrics(ctx context.Context, _ map[string]any) (map[string]any, error
 	}
 	// Memory
 	if fi, err := os.ReadFile("/proc/meminfo"); err == nil {
-		var total, avail uint64
+		var total, avail, buffers, cached, shared, swapTotal, swapFree uint64
 		for _, line := range strings.Split(string(fi), "\n") {
 			if strings.HasPrefix(line, "MemTotal:") {
 				total = parseKB(line)
@@ -103,11 +103,35 @@ func SystemMetrics(ctx context.Context, _ map[string]any) (map[string]any, error
 			if strings.HasPrefix(line, "MemAvailable:") {
 				avail = parseKB(line)
 			}
+			if strings.HasPrefix(line, "Buffers:") {
+				buffers = parseKB(line)
+			}
+			if strings.HasPrefix(line, "Cached:") {
+				cached = parseKB(line)
+			}
+			if strings.HasPrefix(line, "Shmem:") {
+				shared = parseKB(line)
+			}
+			if strings.HasPrefix(line, "SwapTotal:") {
+				swapTotal = parseKB(line)
+			}
+			if strings.HasPrefix(line, "SwapFree:") {
+				swapFree = parseKB(line)
+			}
 		}
 		if total > 0 {
 			data["mem_total_mb"] = total / 1024
 			data["mem_used_mb"] = (total - avail) / 1024
 			data["mem_used_percent"] = round1(100.0 * float64(total-avail) / float64(total))
+			data["mem_buffers_mb"] = buffers / 1024
+			data["mem_cached_mb"] = cached / 1024
+			data["mem_shared_mb"] = shared / 1024
+		}
+		if swapTotal > 0 {
+			swapUsed := swapTotal - swapFree
+			data["swap_total_mb"] = swapTotal / 1024
+			data["swap_used_mb"] = swapUsed / 1024
+			data["swap_used_percent"] = round1(100.0 * float64(swapUsed) / float64(swapTotal))
 		}
 	}
 	// Disk (root filesystem)
@@ -129,7 +153,38 @@ func SystemMetrics(ctx context.Context, _ map[string]any) (map[string]any, error
 			data["disk_used_percent"] = round1(100.0 * float64(used) / float64(total))
 		}
 	}
+	outI, errI := exec.CommandContext(ctx, "df", "-B1", "--output=itotal,iused,iavail", "/").Output()
+	if errI == nil {
+		if itotal, iused, parseErr := parseDFInodeOutput(string(outI)); parseErr == nil {
+			data["disk_inodes_total"] = itotal
+			data["disk_inodes_used"] = iused
+			data["disk_inodes_used_percent"] = round1(100.0 * float64(iused) / float64(itotal))
+		}
+	}
 	return data, nil
+}
+
+func parseDFInodeOutput(output string) (totalInodes, usedInodes uint64, err error) {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) != 2 {
+		return 0, 0, fmt.Errorf("df -i output must have header and one data row")
+	}
+	fields := strings.Fields(lines[1])
+	if len(fields) != 3 {
+		return 0, 0, fmt.Errorf("df -i data row must contain itotal, iused, iavail")
+	}
+	totalInodes, err = strconv.ParseUint(fields[0], 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	usedInodes, err = strconv.ParseUint(fields[1], 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	if totalInodes == 0 || usedInodes > totalInodes {
+		return 0, 0, fmt.Errorf("invalid df -i inode values")
+	}
+	return totalInodes, usedInodes, nil
 }
 
 func parseDFOutput(output string) (totalBytes, usedBytes uint64, err error) {
@@ -300,7 +355,7 @@ func extractCertPaths(content string) map[string]string {
 	return res
 }
 
-// NetInterfaces: rx/tx byte counters per interface from /sys.
+// NetInterfaces: rx/tx byte and packet counters, errors and drops per interface from /sys.
 func NetInterfaces(ctx context.Context, _ map[string]any) (map[string]any, error) {
 	entries, err := os.ReadDir("/sys/class/net")
 	if err != nil {
@@ -310,21 +365,26 @@ func NetInterfaces(ctx context.Context, _ map[string]any) (map[string]any, error
 	for _, e := range entries {
 		name := e.Name()
 		base := filepath.Join("/sys/class/net", name)
-		rx, _ := os.ReadFile(filepath.Join(base, "statistics", "rx_bytes"))
-		tx, _ := os.ReadFile(filepath.Join(base, "statistics", "tx_bytes"))
-		speed, _ := os.ReadFile(filepath.Join(base, "speed"))
 		ifc := map[string]any{"name": name}
-		if len(rx) > 0 {
-			v, _ := strconv.ParseUint(strings.TrimSpace(string(rx)), 10, 64)
-			ifc["rx_bytes"] = v
+		readSysStat := func(field string, key string) {
+			if b, err := os.ReadFile(filepath.Join(base, "statistics", field)); err == nil {
+				if v, perr := strconv.ParseUint(strings.TrimSpace(string(b)), 10, 64); perr == nil {
+					ifc[key] = v
+				}
+			}
 		}
-		if len(tx) > 0 {
-			v, _ := strconv.ParseUint(strings.TrimSpace(string(tx)), 10, 64)
-			ifc["tx_bytes"] = v
-		}
-		if len(speed) > 0 {
-			v, _ := strconv.Atoi(strings.TrimSpace(string(speed)))
-			ifc["speed_mbps"] = v
+		readSysStat("rx_bytes", "rx_bytes")
+		readSysStat("tx_bytes", "tx_bytes")
+		readSysStat("rx_packets", "rx_packets")
+		readSysStat("tx_packets", "tx_packets")
+		readSysStat("rx_errors", "rx_errors")
+		readSysStat("tx_errors", "tx_errors")
+		readSysStat("rx_dropped", "rx_dropped")
+		readSysStat("tx_dropped", "tx_dropped")
+		if speed, err := os.ReadFile(filepath.Join(base, "speed")); err == nil {
+			if v, err := strconv.Atoi(strings.TrimSpace(string(speed))); err == nil {
+				ifc["speed_mbps"] = v
+			}
 		}
 		ifaces = append(ifaces, ifc)
 	}
@@ -353,6 +413,7 @@ func Processes(ctx context.Context, p map[string]any) (map[string]any, error) {
 	type proc struct {
 		pid   int
 		name  string
+		uid   string
 		rssMB float64
 	}
 	var procs []proc
@@ -380,7 +441,8 @@ func Processes(ctx context.Context, p map[string]any) (map[string]any, error) {
 		// After ") ": rest[0]=field 3 (state); RSS is field 24 → rest[21] (pages × 4KB).
 		rssPages, _ := strconv.ParseFloat(rest[21], 64)
 		procName := string(statB)[strings.Index(string(statB), "(")+1 : idx]
-		procs = append(procs, proc{pid, procName, rssPages * 4.0 / 1024})
+		uid := readProcUID(pid)
+		procs = append(procs, proc{pid, procName, uid, rssPages * 4.0 / 1024})
 	}
 	// sort desc by rss
 	sort.Slice(procs, func(i, j int) bool { return procs[i].rssMB > procs[j].rssMB })
@@ -389,9 +451,27 @@ func Processes(ctx context.Context, p map[string]any) (map[string]any, error) {
 	}
 	out := []map[string]any{}
 	for _, pr := range procs {
-		out = append(out, map[string]any{"pid": pr.pid, "name": pr.name, "rss_mb": round1(pr.rssMB)})
+		out = append(out, map[string]any{"pid": pr.pid, "name": pr.name, "uid": pr.uid, "rss_mb": round1(pr.rssMB)})
 	}
 	return map[string]any{"processes": out}, nil
+}
+
+// readProcUID returns the real uid from /proc/<pid>/status, or "unknown".
+func readProcUID(pid int) string {
+	b, err := os.ReadFile(filepath.Join("/proc", fmt.Sprint(pid), "status"))
+	if err != nil {
+		return "unknown"
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		if strings.HasPrefix(line, "Uid:") {
+			fields := strings.Fields(line)
+			if len(fields) > 1 {
+				return fields[1]
+			}
+			break
+		}
+	}
+	return "unknown"
 }
 
 // round2 helper for display

@@ -16,19 +16,22 @@ mkdir -p "$TMP_ROOT"
 BUILD_DIR="$(mktemp -d "$TMP_ROOT/orangecat-check.XXXXXX")"
 trap 'rm -rf "$BUILD_DIR"' EXIT
 
-printf '%s\n' '[1/7] Go 全量测试'
+printf '%s\n' '[1/8] Go 全量测试'
 go test ./... -count=1
 
-printf '%s\n' '[2/7] Go 静态检查'
+printf '%s\n' '[2/8] Go 静态检查'
 go vet ./...
 
-printf '%s\n' '[3/7] 编译面板'
+printf '%s\n' '[3/8] 编译面板'
 go build -o "$BUILD_DIR/ocp-panel" ./panel/cmd/ocp-panel
 
-printf '%s\n' '[4/7] 编译 Agent'
+printf '%s\n' '[4/8] 编译 Agent'
 go build -o "$BUILD_DIR/ocp-agent" ./agent/cmd/ocp-agent
 
-printf '%s\n' '[5/7] 检查嵌入页面 JavaScript'
+printf '%s\n' '[5/8] 编译采样器'
+go build -o "$BUILD_DIR/ocp-sampler" ./panel/cmd/ocp-sampler
+
+printf '%s\n' '[6/8] 检查嵌入页面 JavaScript'
 python3 - "$ROOT_DIR/panel/cmd/ocp-panel/web/index.html" "$BUILD_DIR/ui-check.js" <<'PY'
 from pathlib import Path
 import re
@@ -44,10 +47,10 @@ Path(sys.argv[2]).write_text(scripts[0], encoding="utf-8")
 PY
 node --check "$BUILD_DIR/ui-check.js"
 
-printf '%s\n' '[6/7] 前端请求行为测试'
+printf '%s\n' '[7/8] 前端请求行为测试'
 node --test panel/cmd/ocp-panel/web/index.test.mjs
 
-printf '%s\n' '[7/7] Git 空白差异检查'
+printf '%s\n' '[8/8] Git 空白差异检查'
 git diff --check
 
 printf '%s\n' '本地门禁全部通过（本脚本不部署、不重启服务；部署由 installer/--apply 显式执行）。'

@@ -23,6 +23,36 @@ func TestParseDFOutputRejectsInvalidShape(t *testing.T) {
 	}
 }
 
+func TestParseDFInodeOutput(t *testing.T) {
+	gotTotal, gotUsed, err := parseDFInodeOutput("Itotal IUsed IAvail\n8847360 602251 8245109\n")
+	if err != nil {
+		t.Fatalf("parseDFInodeOutput returned error: %v", err)
+	}
+	if gotTotal != 8847360 || gotUsed != 602251 {
+		t.Fatalf("unexpected inode values: total=%d used=%d", gotTotal, gotUsed)
+	}
+}
+
+func TestParseDFInodeOutputRejectsInvalidShape(t *testing.T) {
+	for _, input := range []string{"", "df: field 'itotal' unknown", "header\n1 2\n", "header\n10 11 12\n"} {
+		if _, _, err := parseDFInodeOutput(input); err == nil {
+			t.Errorf("expected parse error for %q", input)
+		}
+	}
+}
+
+func TestSystemMetricsReportsMemoryAndSwapAndInodes(t *testing.T) {
+	data, err := SystemMetrics(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("SystemMetrics returned error: %v", err)
+	}
+	for _, key := range []string{"mem_total_mb", "mem_used_mb", "mem_used_percent", "mem_buffers_mb", "mem_cached_mb", "swap_total_mb", "swap_used_mb", "swap_used_percent", "disk_inodes_total", "disk_inodes_used", "disk_inodes_used_percent"} {
+		if _, ok := data[key]; !ok {
+			t.Errorf("SystemMetrics missing %q", key)
+		}
+	}
+}
+
 func TestNewRegistryRejectsParametersForReadOnlyActions(t *testing.T) {
 	reg := NewRegistry()
 	for _, action := range []string{"system.info", "system.metrics", "docker.summary", "docker.containers", "nginx.sites", "net.interfaces"} {

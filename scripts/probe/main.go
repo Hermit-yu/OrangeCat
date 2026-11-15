@@ -16,11 +16,19 @@ const socketPath = "/run/ocp/agent.sock"
 var actions = []string{
 	"system.info",
 	"system.metrics",
+	"system.services",
+	"net.diagnostics",
+	"health.check",
 	"docker.summary",
 	"docker.containers",
 	"nginx.sites",
 	"net.interfaces",
 	"processes",
+}
+
+// params overrides the default empty params for actions that need them.
+var actionParams = map[string]map[string]any{
+	"processes": {"top": 10.0},
 }
 
 type req struct {
@@ -41,8 +49,12 @@ func probe(action string) (bool, string) {
 		return false, err.Error()
 	}
 	defer conn.Close()
-	_ = conn.SetDeadline(time.Now().Add(30 * time.Second))
-	wire, err := json.Marshal(req{ID: "probe", Action: action, Params: map[string]any{}})
+	_ = conn.SetDeadline(time.Now().Add(60 * time.Second))
+	params := actionParams[action]
+	if params == nil {
+		params = map[string]any{}
+	}
+	wire, err := json.Marshal(req{ID: "probe", Action: action, Params: params})
 	if err != nil {
 		return false, err.Error()
 	}

@@ -146,7 +146,13 @@ install -o root -g root -m 0644 "$PREFIX/installer/ocp-panel.service" "$PANEL_UN
 systemctl daemon-reload
 if [[ $was_active -eq 1 ]]; then systemctl restart ocp-panel; else systemctl enable --now ocp-panel; fi
 systemctl is-active --quiet ocp-panel
-status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' http://172.18.0.1:8390/api/login)
+# 就绪等待：restart 后端口可能尚未接受连接，最多重试 15 次（每次 1s），避免误判失败触发回滚。
+status=""
+for _ in $(seq 1 15); do
+  status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' http://172.18.0.1:8390/api/login 2>/dev/null || true)
+  if [[ "$status" == 405 ]]; then break; fi
+  sleep 1
+done
 [[ "$status" == 405 ]]
 echo "Panel 已启动；GET 登录端点返回 405，绑定地址/反代/登录验证仍需单独验收。"
 echo "回滚材料：$BACKUP"

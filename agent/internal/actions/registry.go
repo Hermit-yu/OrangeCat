@@ -44,6 +44,10 @@ func NewRegistry() *Registry {
 	r := &Registry{handlers: map[string]Handler{}}
 	r.Register("system.info", noParams(SystemInfo))
 	r.Register("system.metrics", noParams(SystemMetrics))
+	r.Register("system.services", Services)
+	r.Register("net.diagnostics", LinkDiagnostics)
+	r.Register("health.check", HealthCheck)
+	r.Register("process.kill", KillProcess)
 	r.Register("docker.summary", noParams(DockerSummary))
 	r.Register("docker.containers", noParams(DockerContainers))
 	r.Register("nginx.sites", noParams(NginxSites))

@@ -10,9 +10,9 @@ import (
 
 // Audit appends action records to a bounded JSONL file.
 type Audit struct {
-	mu   sync.Mutex
-	f    *os.File
-	path string
+	mu       sync.Mutex
+	f        *os.File
+	path     string
 	maxLines int
 }
 
@@ -34,10 +34,10 @@ func (a *Audit) Record(action string, params map[string]any, ok bool, errMsg str
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	rec := map[string]any{
-		"ts": time.Now().Format(time.RFC3339),
+		"ts":     time.Now().Format(time.RFC3339),
 		"action": action,
 		"params": params,
-		"ok": ok,
+		"ok":     ok,
 		"dur_ms": durMs,
 	}
 	if errMsg != "" {

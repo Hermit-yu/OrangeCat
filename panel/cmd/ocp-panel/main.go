@@ -110,6 +110,11 @@ func main() {
 	mux.HandleFunc("/api/nginx", p.requireAuth(p.handleNginx))
 	mux.HandleFunc("/api/net", p.requireAuth(p.handleNet))
 	mux.HandleFunc("/api/processes", p.requireAuth(p.handleProcesses))
+	mux.HandleFunc("/api/services", p.requireAuth(p.handleServices))
+	mux.HandleFunc("/api/health", p.requireAuth(p.handleHealth))
+	mux.HandleFunc("/api/diagnostics", p.requireAuth(p.handleDiagnostics))
+	mux.HandleFunc("/api/processes/kill", p.handleProcessKill)
+	mux.HandleFunc("/api/history", p.requireAuth(p.handleHistory))
 	mux.HandleFunc("/", p.handleIndex)
 
 	srv := &http.Server{Addr: *addr, Handler: p.securityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}

@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	TypeLogin  = "login"
-	TypeLogout = "logout"
+	TypeLogin       = "login"
+	TypeLogout      = "logout"
+	TypeProcessKill = "process_kill"
 
 	OutcomeSuccess  = "success"
 	OutcomeRejected = "rejected"
@@ -31,6 +32,10 @@ const (
 	ReasonSessionExpiredUnknown = "session_expired_or_unknown"
 	ReasonCSRFFailed            = "csrf_failed"
 	ReasonLogoutCompleted       = "logout_completed"
+	ReasonKillSignalSent        = "kill_signal_sent"
+	ReasonKillRejected          = "kill_rejected"
+	ReasonKillRequestInvalid    = "kill_request_invalid"
+	ReasonKillPIDInitForbidden  = "kill_pid_init_forbidden"
 )
 
 var allowedReasons = map[string]struct{}{
@@ -38,6 +43,8 @@ var allowedReasons = map[string]struct{}{
 	ReasonRateLimited: {}, ReasonBadCredentials: {}, ReasonCredentialsAccepted: {},
 	ReasonOriginMismatch: {}, ReasonSessionMissing: {}, ReasonSessionExpiredUnknown: {},
 	ReasonCSRFFailed: {}, ReasonLogoutCompleted: {},
+	ReasonKillSignalSent: {}, ReasonKillRejected: {}, ReasonKillRequestInvalid: {},
+	ReasonKillPIDInitForbidden: {},
 }
 
 // Event deliberately has no username, password, cookie, token, URL, or body fields.
@@ -118,7 +125,7 @@ func openLog(path string) (*os.File, error) {
 }
 
 func (w *Writer) Record(event Event) error {
-	if event.Type != TypeLogin && event.Type != TypeLogout {
+	if event.Type != TypeLogin && event.Type != TypeLogout && event.Type != TypeProcessKill {
 		return fmt.Errorf("invalid auth event type %q", event.Type)
 	}
 	if event.Outcome != OutcomeSuccess && event.Outcome != OutcomeRejected {
