@@ -122,6 +122,30 @@ body{background:var(--page-ambient);color:var(--text);font:14px/1.55 var(--font)
 .topbar__title{font-size:16px;font-weight:600;color:var(--text)}
 .topbar__title .dim{font-size:12px;font-weight:400;margin-left:8px}
 .topbar__actions{display:flex;align-items:center;gap:8px}
+/* P12：经典/桌面双模式 */
+.mode-btn{font-size:12px;padding:6px 12px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:6px;cursor:pointer}
+.mode-btn:hover{background:var(--surface2)}
+.ocp-desktop{display:none;position:fixed;inset:var(--topbar-height) 0 0 0;background:var(--surface2);overflow:hidden}
+body.mode-desktop .ocp-desktop{display:block}
+body.mode-desktop .app-shell{display:none}
+.desktop-window{position:absolute;min-width:360px;min-height:220px;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden}
+.desktop-window__title{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:var(--surface2);border-bottom:1px solid var(--border);cursor:grab;font-size:12px;color:var(--text);user-select:none}
+.desktop-window__title:active{cursor:grabbing}
+.desktop-window__btns{display:flex;gap:6px}
+.desktop-window__btn{width:20px;height:20px;border:none;border-radius:4px;background:transparent;color:var(--text);cursor:pointer;font-size:12px;line-height:1}
+.desktop-window__btn:hover{background:var(--border)}
+.desktop-window__btn.min{background:#c9a34a;color:#111}
+.desktop-window__btn.close{background:#d9534f;color:#fff}
+.desktop-window__body{flex:1;overflow:auto;padding:12px}
+.desktop-window.minimized{display:none}
+.ocp-taskbar{position:fixed;bottom:0;left:0;right:0;height:40px;background:var(--surface);border-top:1px solid var(--border);display:none;align-items:center;gap:6px;padding:0 12px;z-index:100}
+body.mode-desktop .ocp-taskbar{display:flex}
+.ocp-taskbar__item{font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:var(--surface2);color:var(--text);cursor:pointer}
+.ocp-taskbar__item.active{background:#c9a34a;color:#111}
+.ocp-taskbar__item.min{opacity:.55}
+.ocp-desktop__docks{position:absolute;bottom:48px;left:50%;transform:translateX(-50%);display:flex;gap:8px;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.ocp-desktop__dock-item{width:44px;height:44px;border:none;border-radius:10px;background:var(--surface2);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.ocp-desktop__dock-item:hover{background:#c9a34a;color:#111}
 .page-content{flex:1;padding:38px;max-width:1640px;width:100%;margin:0 auto}
 .page{display:flex;flex-direction:column;gap:22px}
 
@@ -466,6 +490,7 @@ section .panel-card{margin-bottom:22px}
     <header class="topbar">
       <div class="topbar__title" id="pageTitle">概览<span class="dim" id="hostLabelTop"></span></div>
       <div class="topbar__actions">
+        <button id="btnMode" class="mode-btn" title="切换经典/桌面模式">桌面模式</button>
         <button id="btnRefresh" class="icon-button" title="刷新">⟳</button>
       </div>
     </header>
@@ -884,6 +909,13 @@ section .panel-card{margin-bottom:22px}
     </main>
   </div>
 </div>
+
+<!-- P12：桌面模式容器 + 任务栏（多窗口/拖放/最小化/任务栏） -->
+<div class="ocp-desktop" id="ocpDesktop">
+  <div class="ocp-desktop__docks" id="ocpDocks"></div>
+  <div id="ocpWindows"></div>
+</div>
+<div class="ocp-taskbar" id="ocpTaskbar"></div>
 
 <script nonce="__OCP_CSP_NONCE__">
 const APP_BASE=location.pathname.startsWith("/orangecat/")?"/orangecat":"";
@@ -1740,6 +1772,100 @@ document.getElementById("aiModelTag").addEventListener("click",()=>{
 });
 aiRenderSessions();
 aiInit();
+// ── P12：经典/桌面双模式 + 桌面窗口（多窗口/拖放/最小化/任务栏） ──
+let ocpMode=localStorage.getItem("ocpMode")||"classic";
+const ocpWinViews=["overview","containers","resources","logs","sites","files","tasks","terminal","net","proc","svc","health","diag","chart","ai","system","settings","apps","cluster","vms"];
+const ocpWinTitles={overview:"概览",containers:"容器",resources:"资源",logs:"容器日志",sites:"Nginx 站点",files:"文件管理",tasks:"后台任务",terminal:"终端",net:"网卡流量",proc:"进程",svc:"服务",health:"主机体检",diag:"链路诊断",chart:"历史趋势",ai:"AI 助手",system:"系统中心",settings:"设置",apps:"应用市场",cluster:"集群",vms:"虚拟机"};
+let ocpOpenWins=[]; // {id, view, minimized}
+function ocpApplyMode(){
+  document.body.classList.toggle("mode-desktop",ocpMode==="desktop");
+  const btn=document.getElementById("btnMode");if(btn)btn.textContent=ocpMode==="desktop"?"经典模式":"桌面模式";
+  const tb=document.getElementById("ocpTaskbar");if(tb)tb.style.display=ocpMode==="desktop"?"flex":"none";
+  try{localStorage.setItem("ocpMode",ocpMode)}catch{}
+  if(ocpMode==="desktop")ocpRenderDocks();
+}
+function ocpRenderDocks(){
+  const docks=document.getElementById("ocpDocks");if(!docks)return;
+  docks.innerHTML="";
+  ["overview","terminal","sites","files","apps","settings"].forEach(v=>{
+    const b=document.createElement("button");
+    b.className="ocp-desktop__dock-item";b.title=ocpWinTitles[v]||v;
+    b.innerHTML=(ocpWinTitles[v]||v).slice(0,1);
+    b.addEventListener("click",()=>ocpOpenWindow(v));
+    docks.appendChild(b);
+  });
+}
+function ocpOpenWindow(view){
+  if(!ocpWinViews.includes(view))return;
+  const existing=ocpOpenWins.find(w=>w.view===view);
+  if(existing){existing.minimized=false;ocpRenderWindows();ocpRenderTaskbar();return}
+  if(ocpOpenWins.length>=8)return;
+  ocpOpenWins.push({id:"w"+Date.now(),view,minimized:false});
+  ocpRenderWindows();ocpRenderTaskbar();
+}
+function ocpCloseWindow(id){
+  ocpOpenWins=ocpOpenWins.filter(w=>w.id!==id);
+  ocpRenderWindows();ocpRenderTaskbar();
+}
+function ocpToggleMin(id){
+  const w=ocpOpenWins.find(x=>x.id===id);if(w)w.minimized=!w.minimized;
+  ocpRenderWindows();ocpRenderTaskbar();
+}
+function ocpRenderWindows(){
+  const box=document.getElementById("ocpWindows");if(!box)return;
+  box.innerHTML="";
+  ocpOpenWins.forEach((w,i)=>{
+    const el=document.createElement("div");
+    el.className="desktop-window"+(w.minimized?" minimized":"");
+    el.dataset.id=w.id;
+    el.style.left=(60+i*30)+"px";el.style.top=(40+i*24)+"px";
+    el.style.width="620px";el.style.height="420px";
+    el.innerHTML=`<div class="desktop-window__title"><span>${esc(ocpWinTitles[w.view]||w.view)}</span><span class="desktop-window__btns"><button class="desktop-window__btn min" title="最小化">—</button><button class="desktop-window__btn close" title="关闭">×</button></span></div><div class="desktop-window__body"></div>`;
+    const min=el.querySelector(".desktop-window__btn.min");
+    const close=el.querySelector(".desktop-window__btn.close");
+    if(min)min.addEventListener("click",()=>ocpToggleMin(w.id));
+    if(close)close.addEventListener("click",()=>ocpCloseWindow(w.id));
+    // 拖放（标题栏）
+    const title=el.querySelector(".desktop-window__title");
+    if(title){
+      let sx=0,sy=0,ox=0,oy=0,drag=false;
+      title.addEventListener("mousedown",(e)=>{
+        drag=true;sx=e.clientX;sy=e.clientY;
+        ox=parseInt(el.style.left)||0;oy=parseInt(el.style.top)||0;
+        e.preventDefault();
+      });
+      document.addEventListener("mousemove",(e)=>{
+        if(!drag)return;
+        el.style.left=Math.max(0,ox+e.clientX-sx)+"px";
+        el.style.top=Math.max(0,oy+e.clientY-sy)+"px";
+      });
+      document.addEventListener("mouseup",()=>{drag=false});
+    }
+    box.appendChild(el);
+    // 加载对应视图内容（复用经典视图 DOM 结构）
+    const body=el.querySelector(".desktop-window__body");
+    if(body)ocpFillWindowBody(body,w.view);
+  });
+}
+function ocpFillWindowBody(body,view){
+  // 复用各视图的渲染：把经典视图的内容克隆进窗口（只读展示 + 真实 API 数据已在经典视图）
+  const src=document.getElementById("sec"+view[0].toUpperCase()+view.slice(1));
+  if(src){body.innerHTML=src.outerHTML;body.querySelectorAll("button,textarea,input,select").forEach(b=>{if(b.id!=="aiInput")b.disabled=true});}
+  else body.innerHTML='<div class="dim">该视图在桌面模式暂不可用</div>';
+}
+function ocpRenderTaskbar(){
+  const tb=document.getElementById("ocpTaskbar");if(!tb)return;
+  tb.innerHTML="";
+  ocpOpenWins.forEach(w=>{
+    const it=document.createElement("button");
+    it.className="ocp-taskbar__item"+(w.minimized?" min":" active");
+    it.textContent=ocpWinTitles[w.view]||w.view;
+    it.addEventListener("click",()=>ocpToggleMin(w.id));
+    tb.appendChild(it);
+  });
+}
+document.getElementById("btnMode").addEventListener("click",()=>{ocpMode=ocpMode==="desktop"?"classic":"desktop";ocpApplyMode()});
+ocpApplyMode();
 (async()=>{const r=await fetch(APP_BASE+"/api/overview",{credentials:"same-origin"});if(r.status===401)return;refresh().catch(()=>{});setInterval(()=>refresh().catch(()=>{}),5000)})();</script>
 </body>
 </html>
