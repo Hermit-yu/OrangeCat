@@ -303,6 +303,15 @@ section .panel-card{margin-bottom:22px}
 .chart-summary__card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:3px}
 .chart-summary__card span{font-size:11px;color:var(--muted)}
 .chart-summary__card strong{font-size:16px;color:var(--text)}
+/* Settings / System 页 */
+.settings-grid,.system-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:14px}
+.card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px}
+.detail-list{display:flex;flex-direction:column;gap:8px}
+.detail-row{display:flex;justify-content:space-between;gap:12px;font-size:13px}
+.detail-row .k{color:var(--muted);flex-shrink:0}
+.detail-row .v{color:var(--text);text-align:right;word-break:break-all}
+.sec-input{width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--border);color:var(--text);font-size:13px;padding:8px 10px;border-radius:8px}
+.padtop-sm{margin-top:8px}
 .ai-err{color:var(--danger);font-size:12px;padding:0 2px}
 .ai-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-muted);padding:40px}
 .ai-empty .ai-empty__icon{width:52px;height:52px;border-radius:14px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center}
@@ -354,6 +363,8 @@ section .panel-card{margin-bottom:22px}
     <symbol id="i-diag" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"></circle></symbol>
     <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 6-8"></path><path d="M3 21h18"></path></symbol>
     <symbol id="i-ai" viewBox="0 0 24 24"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"></path><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z"></path><path d="M5 15l.7 1.6L7.3 17l-1.6.7L5 19.3l-.7-1.6L2.7 17l1.6-.4z"></path></symbol>
+    <symbol id="i-system" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1.5"></rect><rect x="3" y="13" width="18" height="7" rx="1.5"></rect><path d="M7 7.5h.01"></path><path d="M7 16.5h.01"></path><path d="M11 7.5h6"></path><path d="M11 16.5h6"></path></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></symbol>
   </defs>
 </svg>
 <!-- 登录视图 -->
@@ -397,6 +408,8 @@ section .panel-card{margin-bottom:22px}
       <button class="sidebar__link" data-target="secDiag"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-diag"></use></svg></span>链路诊断</button>
       <button class="sidebar__link" data-target="secChart"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-chart"></use></svg></span>历史趋势</button>
       <button class="sidebar__link" data-target="secAI"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-ai"></use></svg></span>AI 助手</button>
+      <button class="sidebar__link" data-target="secSystem"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-system"></use></svg></span>系统中心</button>
+      <button class="sidebar__link" data-target="secSettings"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-settings"></use></svg></span>设置</button>
     </nav>
     <div class="sidebar__footer">
       <div class="sidebar__agent" id="agentStatusBox">
@@ -736,6 +749,60 @@ section .panel-card{margin-bottom:22px}
             </div>
           </div>
         </section>
+        <!-- 系统中心（切片 I：真实 system.info/metrics + 写操作标依赖未就绪） -->
+        <section id="secSystem" class="view hidden">
+          <div class="section-head">系统中心（真实系统信息 · 只读）</div>
+          <div class="system-grid">
+            <div class="panel-card">
+              <div class="card-title">系统信息</div>
+              <div id="sysSysInfo" class="detail-list"></div>
+            </div>
+            <div class="panel-card">
+              <div class="card-title">运行状态</div>
+              <div id="sysRuntime" class="detail-list"></div>
+            </div>
+          </div>
+          <div class="panel-card">
+            <div class="card-title">系统写操作</div>
+            <div class="dim">主机名 / 时区 / SSH / 防火墙等系统写操作依赖未就绪（需 P6 系统管理能力，未实现不编造）。当前只读展示系统信息。</div>
+          </div>
+        </section>
+        <!-- 设置（切片 F：账户/外观/主机健康真实，其余标依赖未就绪） -->
+        <section id="secSettings" class="view hidden">
+          <div class="section-head">设置</div>
+          <div class="settings-grid">
+            <div class="panel-card">
+              <div class="card-title">当前会话</div>
+              <div id="setSession" class="detail-list"></div>
+            </div>
+            <div class="panel-card">
+              <div class="card-title">修改密码</div>
+              <div class="padtop">
+                <input id="setCurPw" type="password" placeholder="当前密码" class="sec-input">
+                <input id="setNewPw" type="password" placeholder="新密码（≥12 字符，含字母数字）" class="sec-input padtop-sm">
+                <input id="setNewPw2" type="password" placeholder="确认新密码" class="sec-input padtop-sm">
+                <button id="btnSetPw" class="logout-button padtop">更新密码</button>
+                <div id="setPwMsg" class="dim padtop-sm"></div>
+              </div>
+            </div>
+            <div class="panel-card">
+              <div class="card-title">外观主题</div>
+              <div class="padtop">
+                <button id="btnThemeDark" class="logout-button">深色</button>
+                <button id="btnThemeLight" class="logout-button muted">浅色</button>
+                <div class="dim padtop-sm">主题偏好保存在本机浏览器（localStorage），刷新后保持。</div>
+              </div>
+            </div>
+            <div class="panel-card">
+              <div class="card-title">主机健康（真实）</div>
+              <div id="setHostHealth" class="detail-list"></div>
+            </div>
+          </div>
+          <div class="panel-card">
+            <div class="card-title">其他设置</div>
+            <div class="dim">两步验证 / Passkey / 登录安全入口 / 备份恢复 / MCP / 版本更新：依赖未就绪（无真实实现，不编造）。</div>
+          </div>
+        </section>
       </div>
     </main>
   </div>
@@ -908,6 +975,7 @@ async function refresh(){
   if(svcFilter.dataset.loaded!=="1"||svcFilter.dataset.last!==svcFilter.value)loadServices();
   if(!window.__fsInit){window.__fsInit=1;fsLoad(fsCurrent).catch(()=>{})}
   if(chartInfo.dataset.loaded!=="1")loadChart();
+  loadSystemPage();
   if(!window.__chartRange){window.__chartRange=1;
     document.getElementById("chartRange").querySelectorAll(".range-btn").forEach(b=>b.addEventListener("click",()=>{
       document.getElementById("chartRange").querySelectorAll(".range-btn").forEach(x=>x.classList.remove("is-active"));
@@ -1369,6 +1437,61 @@ async function loadChart(){
 }
 document.getElementById("btnRefresh").addEventListener("click",()=>refresh().catch(()=>{}));
 const bmr=document.getElementById("btnMonitorRefresh");if(bmr)bmr.addEventListener("click",()=>refresh().catch(()=>{}));
+// ── 切片 F：设置（当前会话/改密码/主题/主机健康）与切片 I：系统中心 ──
+async function loadSystemPage(){
+  try{
+    const [ov,hp]=await Promise.all([
+      fetch(APP_BASE+"/api/overview",{credentials:"same-origin"}).then(r=>r.ok?r.json():null),
+      fetch(APP_BASE+"/api/health?scope=detailed",{credentials:"same-origin"}).then(r=>r.ok?r.json():null)
+    ]);
+    const o=(ov&&ov.info)||{},m=(ov&&ov.metrics)||{};
+    const sys=document.getElementById("sysSysInfo");
+    if(sys)sys.innerHTML=
+      `<div class="detail-row"><span class="k">主机名</span><span class="v">${esc(o.hostname||"—")}</span></div>`+
+      `<div class="detail-row"><span class="k">系统</span><span class="v">${esc(o.distro||"—")}</span></div>`+
+      `<div class="detail-row"><span class="k">内核</span><span class="v">${esc(o.kernel||"—")}</span></div>`+
+      `<div class="detail-row"><span class="k">架构</span><span class="v">${esc(o.arch||"—")}</span></div>`+
+      `<div class="detail-row"><span class="k">运行时间</span><span class="v">${o.uptime_seconds?Math.floor(o.uptime_seconds/86400)+" 天 "+Math.floor((o.uptime_seconds%86400)/3600)+" 小时":"—"}</span></div>`;
+    const rt=document.getElementById("sysRuntime");
+    if(rt)rt.innerHTML=
+      `<div class="detail-row"><span class="k">CPU</span><span class="v">${esc(m.cpu_percent??"—")}% · ${esc(m.cpu_cores??"—")} 核</span></div>`+
+      `<div class="detail-row"><span class="k">内存</span><span class="v">${esc(m.mem_used_percent??"—")}%</span></div>`+
+      `<div class="detail-row"><span class="k">磁盘</span><span class="v">${esc(m.disk_used_percent??"—")}%</span></div>`+
+      `<div class="detail-row"><span class="k">负载 1/5/15</span><span class="v">${esc(m.load_1m??"—")} / ${esc(m.load_5m??"—")} / ${esc(m.load_15m??"—")}</span></div>`;
+    // 设置页：当前会话 + 主机健康
+    const setS=document.getElementById("setSession");
+    if(setS)setS.innerHTML=
+      `<div class="detail-row"><span class="k">账户</span><span class="v">admin（演示用户）</span></div>`+
+      `<div class="detail-row"><span class="k">认证方式</span><span class="v">密码登录</span></div>`+
+      `<div class="detail-row"><span class="k">会话</span><span class="v">当前有效</span></div>`;
+    const hh=document.getElementById("setHostHealth");
+    const rep=(hp&&hp.report)||{};
+    if(hh)hh.innerHTML=
+      `<div class="detail-row"><span class="k">agent 状态</span><span class="v">${esc(ov&&ov.agent_error?"部分不可达":"在线")}</span></div>`+
+      `<div class="detail-row"><span class="k">总体健康</span><span class="v">${esc(rep.overall||rep.status||"—")}</span></div>`+
+      `<div class="detail-row"><span class="k">磁盘</span><span class="v">${esc(rep.disk_used_percent??rep.disk??"—")}%</span></div>`+
+      `<div class="detail-row"><span class="k">内存</span><span class="v">${esc(rep.mem_used_percent??rep.mem??"—")}%</span></div>`;
+  }catch(e){}
+}
+// 主题切换（localStorage 持久化，真实）
+function applyTheme(t){document.documentElement.dataset.theme=t;try{localStorage.setItem("ocpTheme",t)}catch{}}
+(function(){try{const t=localStorage.getItem("ocpTheme");if(t)applyTheme(t)}catch{}})();
+const btnTD=document.getElementById("btnThemeDark");if(btnTD)btnTD.addEventListener("click",()=>applyTheme("dark"));
+const btnTL=document.getElementById("btnThemeLight");if(btnTL)btnTL.addEventListener("click",()=>applyTheme("light"));
+// 改密码（真实 /api/password）
+const btnSetPw=document.getElementById("btnSetPw");
+if(btnSetPw)btnSetPw.addEventListener("click",async()=>{
+  const msg=document.getElementById("setPwMsg");if(msg)msg.textContent="";
+  const cur=document.getElementById("setCurPw").value, nw=document.getElementById("setNewPw").value, nw2=document.getElementById("setNewPw2").value;
+  if(!cur||!nw||!nw2){if(msg)msg.textContent="请填写全部字段";return}
+  if(nw!==nw2){if(msg)msg.textContent="两次新密码不一致";return}
+  try{
+    const t=await postJSON("/api/password",{current_password:cur,new_password:nw});
+    const j=JSON.parse(t);
+    if(j&&j.ok){if(msg){msg.textContent="密码已更新，下次登录用新密码";msg.style.color="var(--success)"}document.getElementById("setCurPw").value="";document.getElementById("setNewPw").value="";document.getElementById("setNewPw2").value=""}
+    else{if(msg){msg.textContent=(j&&j.error)||"更新失败";msg.style.color="var(--danger)"}}
+  }catch(e){if(msg){msg.textContent="请求失败："+e;msg.style.color="var(--danger)"}}
+});
 // ── AI 助手（切片 A：真实绑定 agnes 端点） ──
 let aiEnabled=false,aiSending=false;
 const aiMessages=[]; // {role, content}

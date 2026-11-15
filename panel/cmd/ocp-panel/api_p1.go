@@ -5,6 +5,7 @@
 package main
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -33,6 +34,99 @@ func (p *panel) handleServices(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := p.clients.Call("system.services", params)
 	writeJSON(w, map[string]any{"services": data, "agent_error": errStr(err)})
+}
+
+// handleChangePassword 修改管理员密码（切片 F）。
+// 校验当前密码（常量时间比较），新密码 ≥12 字符且含字母与数字；
+// 原子写回 panel-password (0600)，更新内存值，记审计。
+func (p *panel) handleChangePassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method", http.StatusMethodNotAllowed)
+		return
+	}
+	var in struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2<<10))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&in); err != nil {
+		p.rejectAuth(w, r, authaudit.TypeLogin, "invalid_json", http.StatusBadRequest, "请求格式无效")
+		return
+	}
+	var trailing any
+	if err := dec.Decode(&trailing); err != io.EOF {
+		p.rejectAuth(w, r, authaudit.TypeLogin, "invalid_json", http.StatusBadRequest, "请求格式无效")
+		return
+	}
+	if subtle.ConstantTimeCompare([]byte(in.CurrentPassword), []byte(p.password)) != 1 {
+		p.rejectAuth(w, r, authaudit.TypeLogin, "bad_credentials", http.StatusUnauthorized, "当前密码错误")
+		return
+	}
+	if len(in.NewPassword) < 12 || !hasLetterAndDigit(in.NewPassword) {
+		p.rejectAuth(w, r, authaudit.TypeLogin, "invalid_password", http.StatusBadRequest, "新密码须至少 12 字符且包含字母和数字")
+		return
+	}
+	// 原子写回：tmp + rename，保留 0600
+	dir := dirOf(p.pwPath)
+	token, tokenErr := randomToken(6)
+	if tokenErr != nil {
+		p.rejectAuth(w, r, authaudit.TypeLogin, "write_failed", http.StatusInternalServerError, "生成临时文件名失败")
+		return
+	}
+	tmp := p.pwPath + ".tmp-" + token
+	if err := os.WriteFile(tmp, []byte(in.NewPassword), 0600); err != nil {
+		p.rejectAuth(w, r, authaudit.TypeLogin, "write_failed", http.StatusInternalServerError, "写密码文件失败")
+		return
+	}
+	if err := os.Chmod(tmp, 0600); err != nil {
+		os.Remove(tmp)
+		p.rejectAuth(w, r, authaudit.TypeLogin, "write_failed", http.StatusInternalServerError, "设置权限失败")
+		return
+	}
+	if err := os.Rename(tmp, p.pwPath); err != nil {
+		os.Remove(tmp)
+		p.rejectAuth(w, r, authaudit.TypeLogin, "write_failed", http.StatusInternalServerError, "替换密码文件失败")
+		return
+	}
+	p.mu.Lock()
+	p.password = in.NewPassword
+	p.mu.Unlock()
+	_ = dir
+	p.recordAudit(r, authaudit.TypePassword, authaudit.ReasonPasswordChanged, "success", "")
+	writeJSON(w, map[string]any{"ok": true, "message": "密码已更新，下次登录用新密码"})
+}
+
+// hasLetterAndDigit reports whether s contains at least one letter and one digit.
+func hasLetterAndDigit(s string) bool {
+	letter, digit := false, false
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+			letter = true
+		}
+		if r >= '0' && r <= '9' {
+			digit = true
+		}
+		if letter && digit {
+			return true
+		}
+	}
+	return false
+}
+
+// recordAudit 记录一次审计事件（带客户端 IP）。
+func (p *panel) recordAudit(r *http.Request, typ, reason, outcome, detail string) {
+	if p.authAudit != nil {
+		ev := authaudit.Event{
+			Type:     typ,
+			Reason:   reason,
+			Outcome:  outcome,
+			ClientIP: p.clientIP(r),
+			Method:   r.Method,
+		}
+		_ = p.authAudit.Record(ev)
+	}
+	_ = detail
 }
 
 func (p *panel) handleHealth(w http.ResponseWriter, r *http.Request) {

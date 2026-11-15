@@ -31,6 +31,7 @@ var webFS embed.FS
 type panel struct {
 	sock            string
 	password        string
+	pwPath          string // 切片 F：panel-password 文件路径（改密码写回）
 	clients         *agentbridge.Client
 	mu              sync.Mutex
 	attempts        map[string]int // IP -> 15 分钟窗口内的登录尝试数
@@ -76,7 +77,7 @@ func main() {
 			log.Printf("关闭认证审计失败: %v", err)
 		}
 	}()
-	p := &panel{sock: *sock, password: "", attempts: map[string]int{}, trustedProxyIPs: trustedProxyIPs, authAudit: auditWriter, auditPath: *authAuditPath, aiEnabled: os.Getenv("OCP_PANEL_AI_ENABLED") == "1"}
+	p := &panel{sock: *sock, password: "", pwPath: *pwPath, attempts: map[string]int{}, trustedProxyIPs: trustedProxyIPs, authAudit: auditWriter, auditPath: *authAuditPath, aiEnabled: os.Getenv("OCP_PANEL_AI_ENABLED") == "1"}
 	p.clients = agentbridge.New(*sock)
 
 	// 密码：存在则严格读取；仅确认为不存在时才生成，绝不覆盖坏权限/空文件/符号链接。
@@ -116,6 +117,7 @@ func main() {
 	mux.HandleFunc("/api/health", p.requireAuth(p.handleHealth))
 	mux.HandleFunc("/api/diagnostics", p.requireAuth(p.handleDiagnostics))
 	mux.HandleFunc("/api/audit", p.requireAuth(p.handleAudit))
+	mux.HandleFunc("/api/password", p.requireAuth(p.handleChangePassword))
 	mux.HandleFunc("/api/processes/kill", p.handleProcessKill)
 	mux.HandleFunc("/api/history", p.requireAuth(p.handleHistory))
 	// P2：Docker 从只读到可管理
