@@ -127,6 +127,7 @@ func main() {
 	mux.HandleFunc("/api/docker/action", p.handleContainerAction)
 	// P3：Nginx 站点与证书发现 + test/reload 写操作
 	mux.HandleFunc("/api/nginx/full", p.requireAuth(p.handleNginxFull))
+	mux.HandleFunc("/api/nginx/site", p.requireAuth(p.handleNginxSiteDetail))
 	mux.HandleFunc("/api/nginx/action", p.handleNginxAction)
 	mux.HandleFunc("/api/fs/list", p.requireAuth(p.handleFsList))
 	mux.HandleFunc("/api/fs/read", p.requireAuth(p.handleFsRead))
@@ -669,6 +670,22 @@ func (p *panel) handleNginx(w http.ResponseWriter, r *http.Request) {
 	// P3：返回增强发现（vhost + 证书到期 + proxy 标记 + nginx 容器事实）。
 	data, err := p.clients.Call("nginx.sites.full", nil)
 	writeJSON(w, map[string]any{"sites": data, "agent_error": errStr(err)})
+}
+
+// handleNginxSiteDetail returns one vhost config's real content (detail view).
+// The file must be a discovered vhost path (validated agent-side).
+func (p *panel) handleNginxSiteDetail(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method", http.StatusMethodNotAllowed)
+		return
+	}
+	file := strings.TrimSpace(r.URL.Query().Get("file"))
+	if file == "" {
+		writeJSON(w, map[string]any{"ok": false, "agent_error": "file is required"})
+		return
+	}
+	data, err := p.clients.Call("nginx.site.detail", map[string]any{"file": file})
+	writeJSON(w, map[string]any{"detail": data, "agent_error": errStr(err)})
 }
 
 func (p *panel) handleNet(w http.ResponseWriter, r *http.Request) {

@@ -62,6 +62,7 @@ func NewRegistry() *Registry {
 	r.Register("nginx.sites.full", noParams(NginxSitesP3))
 	r.Register("nginx.test", NginxTest)
 	r.Register("nginx.reload", NginxReload)
+	r.Register("nginx.site.detail", NginxSiteDetail)
 	r.Register("net.interfaces", noParams(NetInterfaces))
 	r.Register("processes", Processes)
 	r.Register("fs.list", FsList)

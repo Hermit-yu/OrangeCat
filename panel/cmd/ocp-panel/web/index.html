@@ -250,6 +250,16 @@ section .panel-card{margin-bottom:22px}
 .ai-tool{font-size:11px;color:var(--text-muted);border:1px solid var(--border);background:var(--surface-raised);border-radius:999px;padding:3px 10px;cursor:pointer;transition:all .12s}
 .ai-tool:hover{color:var(--brand);border-color:var(--border-strong)}
 .ai-tool.active{background:var(--brand-soft);color:var(--brand-strong);border-color:var(--brand)}
+/* Sites 状态标签页 + 状态徽章 */
+.sites-tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.sites-tab{font-size:12px;color:var(--text-muted);background:var(--surface-raised);border:1px solid var(--border);border-radius:999px;padding:5px 14px;cursor:pointer;transition:all .12s}
+.sites-tab:hover{color:var(--brand);border-color:var(--border-strong)}
+.sites-tab.is-active{background:var(--brand-soft);color:var(--brand-strong);border-color:var(--brand)}
+.st-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);white-space:nowrap}
+.st-healthy{color:#3f9d63;border-color:#3f9d63;background:rgba(63,157,99,.08)}
+.st-needs_review{color:#c98a1b;border-color:#c98a1b;background:rgba(201,138,27,.1)}
+.st-config_only{color:var(--text-muted);border-color:var(--border);background:var(--surface-raised)}
+.sites-detail{margin:4px 0 8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:260px;overflow:auto}
 .ai-err{color:var(--danger);font-size:12px;padding:0 2px}
 .ai-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-muted);padding:40px}
 .ai-empty .ai-empty__icon{width:52px;height:52px;border-radius:14px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center}
@@ -451,10 +461,16 @@ section .panel-card{margin-bottom:22px}
             <div id="logOut" class="padtop small logbox"><div class="dim">输入容器名后查看</div></div>
           </div>
         </section>
-        <!-- Nginx -->
+        <!-- Nginx / Sites（P3 发现 + 切片 B：状态标签页 + 详情） -->
         <section id="secNginx" class="view hidden">
-          <div class="section-head">Nginx 站点（P3 发现，只读）</div>
-          <div class="panel-card pad0"><table id="nginxT"><thead><tr><th>server_name</th><th>配置文件</th><th>证书</th><th>到期</th><th>proxy</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="section-head">站点管理（Nginx 站点，真实发现）</div>
+          <div class="sites-tabs" id="sitesTabs" data-filter="all">
+            <button class="sites-tab is-active" data-sfilter="all">全部</button>
+            <button class="sites-tab" data-sfilter="healthy">健康</button>
+            <button class="sites-tab" data-sfilter="needs_review">需检查</button>
+            <button class="sites-tab" data-sfilter="config_only">纯配置</button>
+          </div>
+          <div class="panel-card pad0"><table id="nginxT"><thead><tr><th>状态</th><th>server_name</th><th>配置文件</th><th>证书</th><th>到期</th><th>proxy</th><th>操作</th></tr></thead><tbody></tbody></table></div>
           <div class="panel-card padtop">
             <button id="btnNginxTest" class="logout-button">校验配置（nginx -t）</button>
             <button id="btnNginxReload" class="logout-button">重载生效</button>
@@ -711,10 +727,31 @@ async function refresh(){
     }).catch(e=>alert("请求失败："+e)).finally(()=>{b.disabled=false;b.textContent=label});
   }));
   const ntb=document.querySelector("#nginxT tbody");
-  const ns=(ng.sites&&ng.sites.sites)||[];
-  ntb.innerHTML=ns.map(s=>`<tr><td>${esc((s.names||[]).join(" "))}</td><td>${esc(s.file)}</td><td class="dim">${esc(s.certs?.cert_host||s.certs?.cert||"无")}</td><td class="dim">${s.expires ? (esc(s.expires.notAfter) + " (" + s.expires.days_left + " 天)") : ""}</td><td class="dim">${s.proxy?"是":"否"}</td><td><button class="actbtn btn-test" data-file="${esc(s.file)}" data-action="test">test</button> <button class="actbtn btn-reload" data-file="${esc(s.file)}" data-action="reload">reload</button></td></tr>`).join("")||`<tr><td colspan="6" class="dim">未发现站点</td></tr>`;
+  const nsAll=(ng.sites&&ng.sites.sites)||[];
+  let sitesFilter=document.getElementById("sitesTabs")?.dataset.filter||"all";
+  const ns=nsAll.filter(s=>sitesFilter==="all"||(s.status||"config_only")===sitesFilter);
+  const stLabel=st=>st==="healthy"?"健康":st==="needs_review"?"需检查":st==="config_only"?"纯配置":"未知";
+  const stClass=st=>"st-badge st-"+(st==="healthy"?"healthy":st==="needs_review"?"needs_review":"config_only");
+  ntb.innerHTML=ns.map((s,idx)=>`<tr><td>${(s.status||"config_only")?(`<span class="${stClass(s.status)}">${stLabel(s.status)}</span>`):""}</td><td>${esc((s.names||[]).join(" "))}</td><td>${esc(s.file)}</td><td class="dim">${esc(s.certs?.cert_host||s.certs?.cert||"无")}</td><td class="dim">${s.expires ? (esc(s.expires.notAfter) + " (" + s.expires.days_left + " 天)") : ""}</td><td class="dim">${s.proxy?"是":"否"}</td><td><button class="actbtn btn-test" data-file="${esc(s.file)}" data-action="test">test</button> <button class="actbtn btn-reload" data-file="${esc(s.file)}" data-action="reload">reload</button> <button class="actbtn btn-detail" data-file="${esc(s.file)}" data-idx="${idx}">详情</button></td></tr>`).join("")||`<tr><td colspan="7" class="dim">未发现站点</td></tr>`;
   ntb.querySelectorAll('.btn-test').forEach(b=>b.addEventListener("click",async()=>{await handleNginxTest()}));
   ntb.querySelectorAll('.btn-reload').forEach(b=>b.addEventListener("click",async()=>{await handleNginxReload()}));
+  ntb.querySelectorAll('.btn-detail').forEach(b=>b.addEventListener("click",async()=>{
+    const f=b.dataset.file;
+    const old=document.getElementById("sitesDetail");
+    if(old&&old.dataset.file===f){old.remove();return}
+    if(old)old.remove();
+    const box=document.createElement("tr");
+    box.id="sitesDetail";box.dataset.file=f;
+    box.innerHTML=`<td colspan="7"><div class="sites-detail">加载配置…</div></td>`;
+    b.closest("tr").after(box);
+    try{
+      const r=await fetch(APP_BASE+"/api/nginx/site?file="+encodeURIComponent(f),{credentials:"same-origin"});
+      const j=await readJSONSafe(r);
+      const det=(j.data&&j.data.detail)||{};
+      if(!det.content){box.querySelector(".sites-detail").textContent="读取失败："+(j.data&&j.data.agent_error?j.data.agent_error:"无内容");return}
+      box.querySelector(".sites-detail").textContent=det.content+(det.truncated?"\n…（内容超长已截断）":"");
+    }catch(e){box.querySelector(".sites-detail").textContent="请求失败："+e}
+  }));
   if(imgRefresh.dataset.loaded!=="1"||imgRefresh.dataset.dirty==="1")loadDockerResources();
   const pnb=document.querySelector("#netT tbody");
   const nts=(nx.interfaces&&nx.interfaces.interfaces)||[];
@@ -728,6 +765,14 @@ async function refresh(){
   if(svcFilter.dataset.loaded!=="1"||svcFilter.dataset.last!==svcFilter.value)loadServices();
   if(!window.__fsInit){window.__fsInit=1;fsLoad(fsCurrent).catch(()=>{})}
   if(chartInfo.dataset.loaded!=="1")loadChart();
+  if(!window.__sitesTabs){window.__sitesTabs=1;
+    document.querySelectorAll("#sitesTabs .sites-tab").forEach(t=>t.addEventListener("click",()=>{
+      document.querySelectorAll("#sitesTabs .sites-tab").forEach(x=>x.classList.remove("is-active"));
+      t.classList.add("is-active");
+      const tabs=document.getElementById("sitesTabs");if(tabs)tabs.dataset.filter=t.dataset.sfilter;
+      refresh().catch(()=>{});
+    }));
+  }
   if(!window.__navInit){window.__navInit=1;initNav();}
   if(!window.__ovNavInit){window.__ovNavInit=1;bindOverviewNav();}
 }

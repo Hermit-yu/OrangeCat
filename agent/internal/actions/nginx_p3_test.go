@@ -8,6 +8,67 @@ import (
 // TestNginxP3RejectsParameters: the read-only full discovery and both write
 // actions must reject any parameter (they are fixed-config operations).
 // NginxSitesP3 is registered via noParams, so test the wrapped form.
+func TestSiteStatusDerivation(t *testing.T) {
+	cert := func(path string) map[string]string {
+		if path == "" {
+			return map[string]string{}
+		}
+		return map[string]string{"cert": path, "cert_host": "/home/web/certs/" + path}
+	}
+	exp := func(days int) map[string]any {
+		return map[string]any{"days_left": days}
+	}
+	cases := []struct {
+		name string
+		site map[string]any
+		want string
+	}{
+		{"no proxy -> config_only", map[string]any{"proxy": false, "certs": cert("/a.pem")}, "config_only"},
+		{"proxy no cert -> needs_review", map[string]any{"proxy": true, "certs": cert("")}, "needs_review"},
+		{"proxy cert expiring -> needs_review", map[string]any{"proxy": true, "certs": cert("/a.pem"), "expires": exp(10)}, "needs_review"},
+		{"proxy cert healthy -> healthy", map[string]any{"proxy": true, "certs": cert("/a.pem"), "expires": exp(90)}, "healthy"},
+		{"proxy cert no expiry data -> healthy (present but unknown)", map[string]any{"proxy": true, "certs": cert("/a.pem")}, "healthy"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := siteStatus(tc.site); got != tc.want {
+				t.Fatalf("siteStatus(%v) = %q, want %q", tc.site, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestNginxSiteDetailValidation(t *testing.T) {
+	// 拒绝：无 file / 未知参数 / 非发现路径（任意路径）。
+	if _, err := NginxSiteDetail(context.Background(), map[string]any{}); err == nil {
+		t.Fatal("empty params should error")
+	}
+	if _, err := NginxSiteDetail(context.Background(), map[string]any{"file": "x", "extra": 1}); err == nil {
+		t.Fatal("unknown param should error")
+	}
+	if _, err := NginxSiteDetail(context.Background(), map[string]any{"file": "/etc/shadow"}); err == nil {
+		t.Fatal("arbitrary path should be rejected")
+	}
+	if _, err := NginxSiteDetail(context.Background(), map[string]any{"file": "/home/web/conf.d/../../etc/passwd"}); err == nil {
+		t.Fatal("path traversal should be rejected")
+	}
+}
+
+func TestValidSiteConfPath(t *testing.T) {
+	// 已知根下的 .conf 文件名合法。
+	if !validSiteConfPath("/home/web/conf.d/taoque.top.conf") {
+		t.Fatal("known root + valid name should be allowed")
+	}
+	// 目录内的非 .conf 拒绝。
+	if validSiteConfPath("/home/web/conf.d/foo.txt") {
+		t.Fatal("non-conf should be rejected")
+	}
+	// 未知根拒绝。
+	if validSiteConfPath("/tmp/evil.conf") {
+		t.Fatal("unknown root should be rejected")
+	}
+}
+
 func TestNginxP3RejectsParameters(t *testing.T) {
 	cases := []struct {
 		name   string

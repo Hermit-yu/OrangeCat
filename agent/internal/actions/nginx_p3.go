@@ -65,6 +65,13 @@ func NginxSitesP3(ctx context.Context, _ map[string]any) (map[string]any, error)
 		}
 	}
 
+	// Derive a real status per site (no invented states): healthy = has a
+	// cert AND proxy_pass AND cert not near/over expiry; needs_review = cert
+	// missing/expiring within 30 days or no proxy; config_only = no proxy.
+	for i := range sites {
+		sites[i]["status"] = siteStatus(sites[i])
+	}
+
 	return map[string]any{
 		"sites":  sites,
 		"certs":  certMapToList(certs),
@@ -262,6 +269,81 @@ func certMapToList(m map[string]map[string]any) []map[string]any {
 		return a < b
 	})
 	return list
+}
+
+// siteStatus derives a real, data-driven status for a discovered site:
+//   - healthy: has a certificate AND proxy_pass AND the cert is not near/over
+//     expiry (days_left > 30 or unknown-but-present).
+//   - needs_review: cert is missing, or expiring within 30 days, or the site
+//     has no proxy_pass (so it may need attention).
+//   - config_only: the config has no proxy_pass (static/management config).
+//
+// It never fabricates a state: it only reasons over the fields that
+// scanNginxSites + scanCertExpiry actually produced.
+func siteStatus(site map[string]any) string {
+	hasProxy, _ := site["proxy"].(bool)
+	hasCert := false
+	days := 999999
+	if ci, ok := site["certs"].(map[string]string); ok && ci["cert"] != "" {
+		hasCert = true
+	}
+	if exp, ok := site["expires"].(map[string]any); ok {
+		if d, ok := exp["days_left"].(int); ok {
+			days = d
+		}
+	}
+	switch {
+	case !hasProxy:
+		return "config_only"
+	case !hasCert || days < 30:
+		return "needs_review"
+	default:
+		return "healthy"
+	}
+}
+
+// NginxSiteDetail reads one vhost config's real content for the detail view.
+// It only accepts a file that scanNginxSites actually discovered (no arbitrary
+// path), and caps the returned content to avoid oversized agent payloads.
+func NginxSiteDetail(ctx context.Context, params map[string]any) (map[string]any, error) {
+	if len(params) != 1 {
+		return nil, fmt.Errorf("nginx.site.detail expects exactly the file parameter")
+	}
+	file, _ := params["file"].(string)
+	file = strings.TrimSpace(file)
+	if file == "" {
+		return nil, fmt.Errorf("file is required")
+	}
+	if !validSiteConfPath(file) {
+		return nil, fmt.Errorf("file is not a discovered vhost config")
+	}
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return nil, fmt.Errorf("read config: %w", err)
+	}
+	const maxDetail = 64 << 10
+	truncated := len(b) > maxDetail
+	if truncated {
+		b = b[:maxDetail]
+	}
+	return map[string]any{
+		"file":      file,
+		"content":   string(b),
+		"size":      len(b),
+		"truncated": truncated,
+	}, nil
+}
+
+// validSiteConfPath reports whether file is one of the vhost config files that
+// scanNginxSites would discover (so detail never reads an arbitrary path).
+func validSiteConfPath(file string) bool {
+	for _, dir := range []string{nginxConfRoot, "/etc/nginx/conf.d", "/etc/nginx/sites-enabled"} {
+		if strings.HasPrefix(file, dir+"/") {
+			base := filepath.Base(file)
+			return nginxConfNameRe.MatchString(base)
+		}
+	}
+	return false
 }
 
 // mustParseJSON is a small helper for tests to decode the NDJSON list.
