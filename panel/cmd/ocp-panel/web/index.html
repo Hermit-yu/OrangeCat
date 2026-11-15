@@ -206,13 +206,13 @@ section .panel-card{margin-bottom:22px}
 .overview-system-card__icon{width:32px;height:32px;border-radius:8px;background:var(--surface-raised);border:1px solid var(--border);color:var(--text-secondary);display:flex;align-items:center;justify-content:center}
 .overview-system-card span:last-child{font-size:13px;font-weight:500;color:var(--text)}
 .service-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
-.service-item{display:flex;align-items:center;gap:10px}
+.service-item{display:flex;align-items:center;gap:10px;min-height:52px}
 .service-item__icon{width:34px;height:34px;border-radius:8px;background:var(--success-soft);color:var(--success);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .service-item__icon.down{background:var(--danger-soft);color:var(--danger)}
 .service-item__body{flex:1;min-width:0}
-.service-item__name{font-size:13px;font-weight:600;color:var(--text)}
-.service-item__meta{font-size:11px;color:var(--text-muted);margin-top:1px}
-.service-item__state{font-size:12px;font-weight:600;color:var(--success)}
+.service-item__name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.service-item__meta{font-size:11px;color:var(--text-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.service-item__state{font-size:12px;font-weight:600;color:var(--success);white-space:nowrap}
 .service-item__state.down{color:var(--danger)}
 
 /* ── 工具布局辅助 ── */
@@ -507,19 +507,40 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 // 侧栏导航切换
 function navTo(id){document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden"));const sec=document.getElementById(id);if(sec)sec.classList.remove("hidden");document.querySelectorAll(".sidebar__link").forEach(l=>l.classList.toggle("router-link-active",l.dataset.target===id));const t=document.getElementById("pageTitle");if(t&&document.querySelector(".sidebar__link[data-target='"+id+"']"))t.firstChild.textContent=document.querySelector(".sidebar__link[data-target='"+id+"']").textContent.trim();}
 function initNav(){const links=document.querySelectorAll(".sidebar__link");links.forEach(l=>l.addEventListener("click",()=>{if(l.dataset.target)navTo(l.dataset.target)}));}
-// 核心服务（概览板块）
+// 核心服务（概览板块）：对接真实数据源，不编造。
+// 底层支持服务 = systemd 服务（Docker Engine 等）+ Docker 容器（nginx/mysql/redis/php 等）。
+// 只显示机器上真实存在且已知的核心服务，未安装的不显示；状态用真实数据。
+const CORE_SYSTEMD=["docker.service","ocp-agent.service","ocp-panel.service","ocp-sampler.service"];
+const CORE_CONTAINERS=["nginx","mysql","mariadb","redis","php","php-fpm","vaultwarden","subconv"];
 async function loadCoreServices(){
   const box=document.getElementById("coreServices");
   if(!box)return;
   try{
-    const r=await fetch(APP_BASE+"/api/services?filter=",{credentials:"same-origin"});
-    const d=await r.json();
-    const svc=(d.services&&d.services.services)||[];
-    const cores=["docker","nginx","mysql","php","redis","ocp-agent","ocp-panel","ocp-sampler"];
-    const picked=svc.filter(s=>cores.some(c=>s.name.includes(c))).slice(0,6);
-    box.innerHTML=picked.length?picked.map(s=>{
-      const down=s.active!=="active";
-      return `<div class="service-item"><span class="service-item__icon${down?" down":""}"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg></span><div class="service-item__body"><div class="service-item__name">${esc(s.name)}</div><div class="service-item__meta">${esc(s.loaded)}</div></div><div class="service-item__state${down?" down":""}">${down?"停止":"运行中"}</div></div>`;
+    const [rs,rd]=await Promise.all([
+      fetch(APP_BASE+"/api/services?filter=",{credentials:"same-origin"}).then(r=>r.ok?r.json():null),
+      fetch(APP_BASE+"/api/docker",{credentials:"same-origin"}).then(r=>r.ok?r.json():null)
+    ]);
+    const svc=(rs&&rs.services&&rs.services.services)||[];
+    const cs=(rd&&rd.containers&&rd.containers.containers)||[];
+    const items=[];
+    // 1) systemd 服务：精确 unit 名匹配（真实存在才显示）
+    for(const s of svc){
+      if(CORE_SYSTEMD.some(u=>s.name===u)){
+        const down=s.active!=="active";
+        items.push({name:s.name.replace(".service",""),meta:s.sub||s.loaded||s.active,down,state:down?"停止":"运行中",kind:"systemd"});
+      }
+    }
+    // 2) Docker 容器：真实运行的底层支持容器（排除自身/无关）
+    for(const c of cs){
+      if(CORE_CONTAINERS.some(n=>c.name===n)){
+        const running=c.state==="running";
+        items.push({name:c.name,meta:(c.status||c.state||""),down:!running,state:running?"运行中":"已停止",kind:"container"});
+      }
+    }
+    // 排序：运行中在前，systemd 优先
+    items.sort((a,b)=>(a.down?1:0)-(b.down?1:0)||(a.kind===b.kind?0:a.kind==="systemd"?-1:1));
+    box.innerHTML=items.length?items.map(s=>{
+      return `<div class="service-item"><span class="service-item__icon${s.down?" down":""}"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg></span><div class="service-item__body"><div class="service-item__name">${esc(s.name)}</div><div class="service-item__meta" title="${esc(s.meta)}">${esc(s.meta)}</div></div><div class="service-item__state${s.down?" down":""}">${esc(s.state)}</div></div>`;
     }).join(""):'<div class="dim">服务数据暂不可用</div>';
   }catch(e){box.innerHTML='<div class="dim">服务加载失败</div>'}
 }
