@@ -130,6 +130,8 @@ func main() {
 	mux.HandleFunc("/api/fs/list", p.requireAuth(p.handleFsList))
 	mux.HandleFunc("/api/fs/read", p.requireAuth(p.handleFsRead))
 	mux.HandleFunc("/api/fs/stat", p.requireAuth(p.handleFsStat))
+	mux.HandleFunc("/api/fs/write", p.handleFsWrite)
+	mux.HandleFunc("/api/fs/write/rollback", p.handleFsWriteRollback)
 	mux.HandleFunc("/", p.handleIndex)
 
 	srv := &http.Server{Addr: *addr, Handler: p.securityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}

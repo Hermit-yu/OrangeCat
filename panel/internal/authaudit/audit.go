@@ -19,6 +19,7 @@ const (
 	TypeProcessKill     = "process_kill"
 	TypeContainerAction = "container_action"
 	TypeNginxAction     = "nginx_action"
+	TypeFsWrite         = "fs_write"
 
 	OutcomeSuccess  = "success"
 	OutcomeRejected = "rejected"
@@ -44,6 +45,12 @@ const (
 	ReasonNginxActionSent       = "nginx_action_sent"
 	ReasonNginxActionFailed     = "nginx_action_failed"
 	ReasonNginxRequestBad       = "nginx_request_invalid"
+	ReasonFsWriteSent           = "fs_write_sent"
+	ReasonFsWriteFailed         = "fs_write_failed"
+	ReasonFsWriteRequestBad     = "fs_write_request_invalid"
+	ReasonFsRollbackSent        = "fs_rollback_sent"
+	ReasonFsRollbackFailed      = "fs_rollback_failed"
+	ReasonFsRollbackRequestBad  = "fs_rollback_request_invalid"
 )
 
 var allowedReasons = map[string]struct{}{
@@ -55,6 +62,8 @@ var allowedReasons = map[string]struct{}{
 	ReasonKillPIDInitForbidden: {},
 	ReasonContainerActionSent:  {}, ReasonContainerActionFailed: {}, ReasonContainerRequestBad: {},
 	ReasonNginxActionSent: {}, ReasonNginxActionFailed: {}, ReasonNginxRequestBad: {},
+	ReasonFsWriteSent: {}, ReasonFsWriteFailed: {}, ReasonFsWriteRequestBad: {},
+	ReasonFsRollbackSent: {}, ReasonFsRollbackFailed: {}, ReasonFsRollbackRequestBad: {},
 }
 
 // Event deliberately has no username, password, cookie, token, URL, or body fields.
@@ -135,7 +144,7 @@ func openLog(path string) (*os.File, error) {
 }
 
 func (w *Writer) Record(event Event) error {
-	if event.Type != TypeLogin && event.Type != TypeLogout && event.Type != TypeProcessKill && event.Type != TypeContainerAction && event.Type != TypeNginxAction {
+	if event.Type != TypeLogin && event.Type != TypeLogout && event.Type != TypeProcessKill && event.Type != TypeContainerAction && event.Type != TypeNginxAction && event.Type != TypeFsWrite {
 		return fmt.Errorf("invalid auth event type %q", event.Type)
 	}
 	if event.Outcome != OutcomeSuccess && event.Outcome != OutcomeRejected {

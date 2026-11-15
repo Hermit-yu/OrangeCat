@@ -63,7 +63,7 @@ section{margin-top:22px}section h2{font-size:14px;color:var(--dim);margin:0 0 10
   <section><h2>镜像 / 网络 / 卷（只读）</h2><span class="dim muted">首次自动加载，之后点刷新</span> <button id="imgRefresh" class="logout-button">刷新</button><div class="card table-card padtop"><table id="imgT"><thead><tr><th>仓库</th><th>标签</th><th>大小</th><th>ID</th></tr></thead><tbody></tbody></table></div><div class="card table-card padtop"><table id="netT2"><thead><tr><th>名称</th><th>驱动</th><th>范围</th><th>容器</th></tr></thead><tbody></tbody></table></div><div class="card table-card padtop"><table id="volT"><thead><tr><th>名称</th><th>驱动</th><th>使用容器</th><th>挂载点</th></tr></thead><tbody></tbody></table></div></section>
   <section><h2>容器日志（有界）</h2><input id="logName" placeholder="容器名" class="pad"><input id="logLines" value="100" placeholder="行数" class="pad"><button id="btnLogs" class="logout-button">查看日志</button><div id="logOut" class="card padtop small logbox"><div class="dim">输入容器名后查看</div></div></section>
   <section><h2>Nginx 站点（P3 发现，只读）</h2><div class="card table-card"><table id="nginxT"><thead><tr><th>server_name</th><th>配置文件</th><th>证书</th><th>到期</th><th>proxy</th></tr></thead><tbody></tbody></table></div><div class="card padtop small"><button id="btnNginxTest" class="logout-button">校验配置（nginx -t）</button> <button id="btnNginxReload" class="logout-button">重载生效</button><div id="nginxActionOut" class="padtop dim"></div></div></section>
-  <section><h2>文件浏览（P4 只读）</h2><input id="fsPath" class="pad" size="48" value="/home/web" placeholder="绝对路径，如 /home/web"><button id="btnFsGo" class="logout-button">打开</button> <button id="btnFsUp" class="logout-button">上级</button><div id="fsErr" class="padtop dim"></div><div class="card table-card padtop"><table id="fsT"><thead><tr><th>名称</th><th>类型</th><th>大小</th><th>修改时间</th></tr></thead><tbody><tr><td colspan="4" class="dim">加载中…</td></tr></tbody></table></div><div class="card padtop small"><div id="fsPreviewHead" class="dim"></div><pre id="fsPreview" class="logbox"></pre></div></section>
+  <section><h2>文件浏览（P4 只读）</h2><input id="fsPath" class="pad" size="48" value="/home/web" placeholder="绝对路径，如 /home/web"><button id="btnFsGo" class="logout-button">打开</button> <button id="btnFsUp" class="logout-button">上级</button><div id="fsErr" class="padtop dim"></div><div class="card table-card padtop"><table id="fsT"><thead><tr><th>名称</th><th>类型</th><th>大小</th><th>修改时间</th></tr></thead><tbody><tr><td colspan="4" class="dim">加载中…</td></tr></tbody></table></div><div class="card padtop small"><div id="fsPreviewHead" class="dim"></div><pre id="fsPreview" class="logbox"></pre><div class="padtop"><button id="btnFsSave" class="logout-button" disabled>保存</button> <button id="btnFsRollback" class="logout-button" disabled>回滚</button><span id="fsWriteOut" class="dim padtop"></span></div></div></section>
 <section><h2>网卡流量计数</h2><div class="card table-card"><table id="netT"><thead><tr><th>接口</th><th>rx</th><th>tx</th></tr></thead><tbody></tbody></table></div></section>
   <section><h2>进程 Top（按内存）<span class="dim muted">· 可结束</span></h2><div class="card table-card"><table id="procT"><thead><tr><th>PID</th><th>名称</th><th>UID</th><th>RSS MB</th><th>操作</th></tr></thead><tbody></tbody></table></div></section>
   <section><h2>服务状态（实时，只读）</h2><input id="svcFilter" placeholder="按名称过滤…" class="pad"><div class="card table-card"><table id="svcT"><thead><tr><th>单元</th><th>loaded</th><th>active</th><th>sub</th></tr></thead><tbody></tbody></table></div></section>
@@ -172,18 +172,48 @@ async function fsLoad(path){
     }));
   }catch(e){err.textContent="请求失败："+e}
 }
+let fsCurrentFile=null, fsLastSnapshot=null;
 async function fsPreview(path){
   const head=document.getElementById("fsPreviewHead");
   const pre=document.getElementById("fsPreview");
+  const save=document.getElementById("btnFsSave");
+  const rb=document.getElementById("btnFsRollback");
   try{
     const r=await fetch(APP_BASE+"/api/fs/read?path="+encodeURIComponent(path),{credentials:"same-origin"});
     const d=await r.json();
     const f=d.file||{};
-    if(d.agent_error){head.textContent=path;pre.textContent="预览失败："+d.agent_error;return}
-    if(f.binary){head.textContent=path+"（二进制文件 "+fmtFsSize(f.size)+"，不显示内容）";pre.textContent="";return}
+    if(d.agent_error){head.textContent=path;pre.textContent="预览失败："+d.agent_error;save.disabled=true;rb.disabled=true;return}
+    if(f.binary){head.textContent=path+"（二进制文件 "+fmtFsSize(f.size)+"，不显示内容）";pre.textContent="";save.disabled=true;rb.disabled=true;return}
     head.textContent=path+"（"+fmtFsSize(f.size)+(f.truncated?"，只显示前 256KB":"")+"）";
     pre.textContent=f.content||"";
-  }catch(e){head.textContent=path;pre.textContent="请求失败："+e}
+    fsCurrentFile=path;
+    save.disabled=false; rb.disabled=false;
+    document.getElementById("fsWriteOut").textContent="";
+  }catch(e){head.textContent=path;pre.textContent="请求失败："+e;save.disabled=true;rb.disabled=true}
+}
+async function handleFsSave(){
+  if(!fsCurrentFile)return;
+  const out=document.getElementById("fsWriteOut");
+  out.textContent="保存中…";
+  try{
+    const body={path:fsCurrentFile,content:document.getElementById("fsPreview").textContent};
+    const raw=await fetch(APP_BASE+"/api/fs/write",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfCookie()},body:JSON.stringify(body)});
+    const d=await raw.json();
+    if(d.ok&&d.result&&d.result.snapshot){fsLastSnapshot=d.result.snapshot;out.textContent="已保存（快照 "+d.result.snapshot+"）";}
+    else out.textContent="保存失败："+(d.agent_error||"未知错误");
+  }catch(e){out.textContent="请求失败："+e}
+}
+async function handleFsRollback(){
+  if(!fsCurrentFile||!fsLastSnapshot){document.getElementById("fsWriteOut").textContent="无可回滚快照";return}
+  const out=document.getElementById("fsWriteOut");
+  out.textContent="回滚中…";
+  try{
+    const body={path:fsCurrentFile,snapshot:fsLastSnapshot};
+    const raw=await fetch(APP_BASE+"/api/fs/write/rollback",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfCookie()},body:JSON.stringify(body)});
+    const d=await raw.json();
+    if(d.ok){out.textContent="已回滚";fsLastSnapshot=null;fsPreview(fsCurrentFile).catch(()=>{});}
+    else out.textContent="回滚失败："+(d.agent_error||"未知错误");
+  }catch(e){out.textContent="请求失败："+e}
 }
 // Nginx test/reload 按钮
 async function handleNginxTest(){
@@ -214,6 +244,8 @@ document.getElementById("btnNginxTest").addEventListener("click",handleNginxTest
 document.getElementById("btnNginxReload").addEventListener("click",handleNginxReload);
 document.getElementById("btnFsGo").addEventListener("click",()=>{const v=document.getElementById("fsPath").value.trim();if(!v){document.getElementById("fsErr").textContent="请输入路径";return}fsLoad(v).catch(()=>{})});
 document.getElementById("btnFsUp").addEventListener("click",()=>fsLoad(fsParent(fsCurrent)).catch(()=>{}));
+document.getElementById("btnFsSave").addEventListener("click",handleFsSave);
+document.getElementById("btnFsRollback").addEventListener("click",handleFsRollback);
 async function loadServices(){svcFilter.dataset.last=svcFilter.value;const f=encodeURIComponent(svcFilter.value||"");const r=await fetch(APP_BASE+"/api/services?filter="+f,{credentials:"same-origin"});const d=await r.json();const svc=(d.services&&d.services.services)||[];const tb=document.querySelector("#svcT tbody");tb.innerHTML=svc.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.loaded)}</td><td>${esc(s.active)}</td><td>${esc(s.sub)}</td></tr>`).join("")||`<tr><td colspan="4" class="dim">服务数据暂不可用：${esc(d.agent_error||"未返回数据")}</td></tr>`;svcFilter.dataset.loaded="1";}
 svcFilter.addEventListener("change",loadServices);
 // 镜像/网络/卷：每条都要 docker inspect 才能拿到成员与使用者，放进 5 秒轮询会打爆
