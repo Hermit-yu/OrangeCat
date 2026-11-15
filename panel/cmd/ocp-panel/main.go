@@ -153,6 +153,9 @@ func main() {
 	mux.HandleFunc("/api/browser/navigate", p.handleBrowserNavigate)
 	mux.HandleFunc("/api/browser/close", p.handleBrowserClose)
 	mux.HandleFunc("/api/browser/url", p.requireAuth(p.handleBrowserURL))
+	// P14：阈值通知规则（rules 只读；check 只读触发检查）
+	mux.HandleFunc("/api/alert/rules", p.requireAuth(p.handleAlertRules))
+	mux.HandleFunc("/api/alert/check", p.requireAuth(p.handleAlertCheck))
 	mux.HandleFunc("/api/password", p.requireAuth(p.handleChangePassword))
 	mux.HandleFunc("/api/processes/kill", p.handleProcessKill)
 	mux.HandleFunc("/api/history", p.requireAuth(p.handleHistory))

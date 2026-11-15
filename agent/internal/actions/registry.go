@@ -63,6 +63,9 @@ func NewRegistry() *Registry {
 	r.Register("apps.catalog", noParams(AppsCatalog))
 	r.Register("apps.install", AppsInstall)
 	r.Register("apps.uninstall", AppsUninstall)
+	// P14：阈值/流量/SSH/离线恢复通知（规则 + 检查 + 触发）
+	r.Register("alert.rules", noParams(AlertRules))
+	r.Register("alert.check", noParams(AlertCheck))
 	// P13：隔离式内置浏览器
 	r.Register("browser.status", noParams(BrowserStatus))
 	r.Register("browser.open", BrowserOpen)
