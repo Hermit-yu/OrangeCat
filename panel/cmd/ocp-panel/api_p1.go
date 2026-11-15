@@ -7,8 +7,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -61,6 +63,63 @@ func (p *panel) handleDiagnostics(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := p.clients.Call("net.diagnostics", params)
 	writeJSON(w, map[string]any{"diagnostics": data, "agent_error": errStr(err)})
+}
+
+// handleAudit returns the most recent audit events from auth-audit.jsonl.
+// It reads the tail of the real log file (bounded), filters by type, and never
+// exposes secret material (message/history/password fields are dropped).
+func (p *panel) handleAudit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method", http.StatusMethodNotAllowed)
+		return
+	}
+	if p.auditPath == "" {
+		writeJSON(w, map[string]any{"ok": true, "events": []any{}, "count": 0})
+		return
+	}
+	limit := 100
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 500 {
+			limit = n
+		}
+	}
+	typeFilter := strings.TrimSpace(r.URL.Query().Get("type"))
+	f, err := os.Open(p.auditPath)
+	if err != nil {
+		writeJSON(w, map[string]any{"ok": true, "events": []any{}, "count": 0, "error": errStr(err)})
+		return
+	}
+	defer f.Close()
+	// Read the whole bounded file (max ~1 MiB) then tail.
+	raw, err := io.ReadAll(io.LimitReader(f, 2<<20))
+	if err != nil {
+		writeJSON(w, map[string]any{"ok": true, "events": []any{}, "count": 0, "error": errStr(err)})
+		return
+	}
+	var events []map[string]any
+	for _, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var ev map[string]any
+		if err := json.Unmarshal([]byte(line), &ev); err != nil {
+			continue
+		}
+		if typeFilter != "" && ev["type"] != typeFilter {
+			continue
+		}
+		// Drop anything that could carry a secret.
+		for _, k := range []string{"message", "history", "password", "token", "key", "secret"} {
+			delete(ev, k)
+		}
+		events = append(events, ev)
+	}
+	// Tail: keep the newest `limit`.
+	if len(events) > limit {
+		events = events[len(events)-limit:]
+	}
+	writeJSON(w, map[string]any{"ok": true, "events": events, "count": len(events)})
 }
 
 func (p *panel) handleProcessKill(w http.ResponseWriter, r *http.Request) {

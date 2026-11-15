@@ -284,6 +284,11 @@ section .panel-card{margin-bottom:22px}
 .diag-card__desc{font-size:11px;color:var(--text-muted);margin-bottom:10px;line-height:1.5}
 .diag-card__row{display:flex;gap:8px}
 .diag-card__out{font-size:11px;color:var(--text);margin-top:10px;white-space:pre-wrap;word-break:break-all;max-height:220px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.5}
+/* Activity 页 */
+.activity-pane{margin-top:4px}
+.activity-pane.hidden{display:none}
+#auditT td,#auditT th{font-size:12px}
+.audit-type{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);white-space:nowrap}
 .ai-err{color:var(--danger);font-size:12px;padding:0 2px}
 .ai-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-muted);padding:40px}
 .ai-empty .ai-empty__icon{width:52px;height:52px;border-radius:14px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center}
@@ -532,14 +537,35 @@ section .panel-card{margin-bottom:22px}
         </section>
         <!-- 后台任务 -->
         <section id="secTask" class="view hidden">
-          <div class="section-head">后台任务</div>
-          <div class="panel-card">
-            <div class="toolbar-row">
-              <button id="btnTaskHostdiag" class="logout-button">主机体检</button>
-              <button id="btnTaskRefresh" class="logout-button">刷新状态</button>
+          <div class="section-head">Activity（变更任务 / 安全审计 / 通知历史）</div>
+          <div class="sites-tabs" id="activityTabs" data-tab="tasks">
+            <button class="sites-tab is-active" data-atab="tasks">变更任务</button>
+            <button class="sites-tab" data-atab="audit">安全审计</button>
+            <button class="sites-tab" data-atab="notif">通知历史</button>
+          </div>
+          <div id="activityTasks" class="activity-pane">
+            <div class="panel-card">
+              <div class="toolbar-row">
+                <button id="btnTaskHostdiag" class="logout-button">主机体检</button>
+                <button id="btnTaskRefresh" class="logout-button">刷新状态</button>
+              </div>
+              <div id="taskStatus" class="dim padtop">未启动任务</div>
+              <pre id="taskLog" class="logbox padtop"></pre>
             </div>
-            <div id="taskStatus" class="dim padtop">未启动任务</div>
-            <pre id="taskLog" class="logbox padtop"></pre>
+          </div>
+          <div id="activityAudit" class="activity-pane hidden">
+            <div class="panel-card pad0">
+              <div class="toolbar-row pad">
+                <button id="btnAuditRefresh" class="logout-button">刷新</button>
+                <span class="dim">仅显示最近 100 条 · 敏感字段已剥离</span>
+              </div>
+              <table id="auditT"><thead><tr><th>时间</th><th>类型</th><th>结果</th><th>来源</th><th>详情</th></tr></thead><tbody></tbody></table>
+            </div>
+          </div>
+          <div id="activityNotif" class="activity-pane hidden">
+            <div class="panel-card">
+              <div class="dim">通知历史依赖未就绪（面板暂无独立通知系统；任务/审计在对应标签页实时可见）。</div>
+            </div>
           </div>
         </section>
         <!-- 网卡 -->
@@ -841,6 +867,17 @@ async function refresh(){
       t.classList.add("is-active");
       const tabs=document.getElementById("sitesTabs");if(tabs)tabs.dataset.filter=t.dataset.sfilter;
       refresh().catch(()=>{});
+    }));
+  }
+  if(!window.__activityTabs){window.__activityTabs=1;
+    document.getElementById("activityTabs").querySelectorAll(".sites-tab").forEach(t=>t.addEventListener("click",()=>{
+      document.getElementById("activityTabs").querySelectorAll(".sites-tab").forEach(x=>x.classList.remove("is-active"));
+      t.classList.add("is-active");
+      const tab=t.dataset.atab;
+      document.getElementById("activityTasks").classList.toggle("hidden",tab!=="tasks");
+      document.getElementById("activityAudit").classList.toggle("hidden",tab!=="audit");
+      document.getElementById("activityNotif").classList.toggle("hidden",tab!=="notif");
+      if(tab==="audit")loadAudit().catch(()=>{});
     }));
   }
   if(!window.__navInit){window.__navInit=1;initNav();}
@@ -1218,6 +1255,26 @@ document.getElementById("diagGrid").querySelectorAll(".btn-diag-run").forEach(b=
   try{await diagRun[tool](out)}catch(e){out.textContent="请求失败："+e}
   finally{b.disabled=false;b.textContent=old}
 }));
+// 切片 E：Activity 页（变更任务 / 安全审计 / 通知历史）
+async function loadAudit(){
+  const tb=document.querySelector("#auditT tbody");
+  if(!tb)return;
+  tb.innerHTML='<tr><td colspan="5" class="dim">加载中…</td></tr>';
+  try{
+    const r=await fetch(APP_BASE+"/api/audit?limit=100",{credentials:"same-origin"});
+    const j=await readJSONSafe(r);
+    const evs=(j.data&&j.data.events)||[];
+    if(!evs.length){tb.innerHTML='<tr><td colspan="5" class="dim">审计为空：'+(j.data&&j.data.error||"")+'</td></tr>';return}
+    tb.innerHTML=evs.map(e=>{
+      const at=(e.at||"").replace("T"," ").replace(/\.\d+Z$/,"");
+      const outcome=e.outcome||"";
+      const cls=outcome==="success"?"stok":(outcome==="rejected"||outcome==="failed")?"sterr":"dim";
+      return `<tr><td class="dim">${esc(at)}</td><td><span class="audit-type">${esc(e.type||"")}</span></td><td class="${cls}">${esc(outcome)}</td><td class="dim">${esc(e.client_ip||e.ip||"")}</td><td class="dim">${esc(e.reason||e.method||"")}</td></tr>`;
+    }).join("");
+  }catch(e){tb.innerHTML='<tr><td colspan="5" class="dim">审计加载失败：'+esc(e)+'</td></tr>'}
+}
+const btnAudit=document.getElementById("btnAuditRefresh");
+if(btnAudit)btnAudit.addEventListener("click",()=>loadAudit().catch(()=>{}));
 async function loadChart(){const now=Math.floor(Date.now()/1000);const from=now-3600;const r=await fetch(APP_BASE+"/api/history?level=raw&from="+from+"&to="+now,{credentials:"same-origin"});const d=await r.json();const svg=document.getElementById("chartRaw");if(d.error){chartInfo.textContent="历史数据暂不可用："+d.error;return}const s=(d.samples||[]).map(p=>({cpu:p.CPU!==undefined?p.CPU:p.cpu,mem:p.Mem!==undefined?p.Mem:p.mem,ts:p.Ts!==undefined?p.Ts:p.ts}));if(!s.length){chartInfo.textContent="最近 1 小时尚无采样数据（采样器未运行或刚启动）";return}const W=900,H=160,pad=6;const x=(i)=>pad+(W-2*pad)*i/(Math.max(1,s.length-1));const y=(v)=>H-pad-(H-2*pad)*Math.min(100,Math.max(0,v))/100;const path=(k)=>s.map((p,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(p[k]).toFixed(1)).join(" ");svg.innerHTML=`<path d="${path("cpu")}" fill="none" stroke="var(--brand)" stroke-width="1.6"/><path d="${path("mem")}" fill="none" stroke="var(--success)" stroke-width="1.6"/><text x="${pad}" y="14" fill="#685f52" font-size="10">CPU</text><text x="${pad+34}" y="14" fill="#236e47" font-size="10">内存</text>`;chartInfo.textContent=`${s.length} 个采样 · 最近 ${Math.round((s[s.length-1].ts-s[0].ts)/60)} 分钟 · CPU 峰值 ${Math.max(...s.map(p=>p.cpu)).toFixed(1)}% · 内存峰值 ${Math.max(...s.map(p=>p.mem)).toFixed(1)}%`;chartInfo.dataset.loaded="1";}
 document.getElementById("btnRefresh").addEventListener("click",()=>refresh().catch(()=>{}));
 const bmr=document.getElementById("btnMonitorRefresh");if(bmr)bmr.addEventListener("click",()=>refresh().catch(()=>{}));

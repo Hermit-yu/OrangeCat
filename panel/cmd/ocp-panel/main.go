@@ -37,6 +37,7 @@ type panel struct {
 	attemptWindow   map[string]time.Time
 	trustedProxyIPs map[netip.Addr]struct{}
 	authAudit       interface{ Record(authaudit.Event) error }
+	auditPath       string // 切片 E：auth-audit.jsonl 路径（安全审计标签页）
 	now             func() time.Time // 可注入时钟，便于确定性验证限速窗口
 	aiEnabled       bool             // 切片 A：AI 助手能力是否启用（OCP_PANEL_AI_ENABLED=1）
 }
@@ -75,7 +76,7 @@ func main() {
 			log.Printf("关闭认证审计失败: %v", err)
 		}
 	}()
-	p := &panel{sock: *sock, attempts: map[string]int{}, trustedProxyIPs: trustedProxyIPs, authAudit: auditWriter, aiEnabled: os.Getenv("OCP_PANEL_AI_ENABLED") == "1"}
+	p := &panel{sock: *sock, password: "", attempts: map[string]int{}, trustedProxyIPs: trustedProxyIPs, authAudit: auditWriter, auditPath: *authAuditPath, aiEnabled: os.Getenv("OCP_PANEL_AI_ENABLED") == "1"}
 	p.clients = agentbridge.New(*sock)
 
 	// 密码：存在则严格读取；仅确认为不存在时才生成，绝不覆盖坏权限/空文件/符号链接。
@@ -114,6 +115,7 @@ func main() {
 	mux.HandleFunc("/api/services", p.requireAuth(p.handleServices))
 	mux.HandleFunc("/api/health", p.requireAuth(p.handleHealth))
 	mux.HandleFunc("/api/diagnostics", p.requireAuth(p.handleDiagnostics))
+	mux.HandleFunc("/api/audit", p.requireAuth(p.handleAudit))
 	mux.HandleFunc("/api/processes/kill", p.handleProcessKill)
 	mux.HandleFunc("/api/history", p.requireAuth(p.handleHistory))
 	// P2：Docker 从只读到可管理
