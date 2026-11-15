@@ -25,6 +25,7 @@ const (
 	TypePTY             = "pty"
 	TypeAI              = "ai_chat"
 	TypePassword        = "password"
+	TypeSystemAction    = "system_action"
 
 	OutcomeSuccess  = "success"
 	OutcomeRejected = "rejected"
@@ -81,6 +82,9 @@ const (
 	ReasonAIChatFailed          = "ai_chat_failed"
 	ReasonAIChatRequestBad      = "ai_chat_request_invalid"
 	ReasonPasswordChanged       = "password_changed"
+	ReasonSystemActionSent      = "system_action_sent"
+	ReasonSystemActionFailed    = "system_action_failed"
+	ReasonSystemRequestBad      = "system_request_invalid"
 )
 
 var allowedReasons = map[string]struct{}{
@@ -103,6 +107,7 @@ var allowedReasons = map[string]struct{}{
 	ReasonPTYCloseSent: {}, ReasonPTYCloseFailed: {}, ReasonPTYCloseRequestBad: {},
 	ReasonAIChatSent: {}, ReasonAIChatFailed: {}, ReasonAIChatRequestBad: {},
 	ReasonPasswordChanged: {},
+	ReasonSystemActionSent: {}, ReasonSystemActionFailed: {}, ReasonSystemRequestBad: {},
 }
 
 // Event deliberately has no username, password, cookie, token, URL, or body fields.
@@ -183,7 +188,7 @@ func openLog(path string) (*os.File, error) {
 }
 
 func (w *Writer) Record(event Event) error {
-	if event.Type != TypeLogin && event.Type != TypeLogout && event.Type != TypeProcessKill && event.Type != TypeContainerAction && event.Type != TypeNginxAction && event.Type != TypeFsWrite && event.Type != TypeFsMutate && event.Type != TypeFsUpload && event.Type != TypePTY && event.Type != TypeAI && event.Type != TypePassword {
+	if event.Type != TypeLogin && event.Type != TypeLogout && event.Type != TypeProcessKill && event.Type != TypeContainerAction && event.Type != TypeNginxAction && event.Type != TypeFsWrite && event.Type != TypeFsMutate && event.Type != TypeFsUpload && event.Type != TypePTY && event.Type != TypeAI && event.Type != TypePassword && event.Type != TypeSystemAction {
 		return fmt.Errorf("invalid auth event type %q", event.Type)
 	}
 	if event.Outcome != OutcomeSuccess && event.Outcome != OutcomeRejected {

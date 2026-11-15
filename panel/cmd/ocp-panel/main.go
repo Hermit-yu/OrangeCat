@@ -134,6 +134,14 @@ func main() {
 	mux.HandleFunc("/api/nginx/full", p.requireAuth(p.handleNginxFull))
 	mux.HandleFunc("/api/nginx/site", p.requireAuth(p.handleNginxSiteDetail))
 	mux.HandleFunc("/api/nginx/action", p.handleNginxAction)
+	// P6：站点变更写（创建/更新/删除反代 vhost，三重门 + 审计 + 回滚）
+	mux.HandleFunc("/api/nginx/site/validate", p.handleNginxSiteValidate)
+	mux.HandleFunc("/api/nginx/site/save", p.handleNginxSiteSave)
+	mux.HandleFunc("/api/nginx/site/delete", p.handleNginxSiteDelete)
+	// P6：系统管理写（主机名/时区 dry_run 预览 + 应用；SSH 只读核对）
+	mux.HandleFunc("/api/system/hostname", p.handleSystemHostname)
+	mux.HandleFunc("/api/system/timezone", p.handleSystemTimezone)
+	mux.HandleFunc("/api/system/ssh", p.requireAuth(p.handleSystemSSH))
 	mux.HandleFunc("/api/fs/list", p.requireAuth(p.handleFsList))
 	mux.HandleFunc("/api/fs/read", p.requireAuth(p.handleFsRead))
 	mux.HandleFunc("/api/fs/stat", p.requireAuth(p.handleFsStat))
