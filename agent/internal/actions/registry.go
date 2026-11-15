@@ -63,6 +63,12 @@ func NewRegistry() *Registry {
 	r.Register("apps.catalog", noParams(AppsCatalog))
 	r.Register("apps.install", AppsInstall)
 	r.Register("apps.uninstall", AppsUninstall)
+	// P13：隔离式内置浏览器
+	r.Register("browser.status", noParams(BrowserStatus))
+	r.Register("browser.open", BrowserOpen)
+	r.Register("browser.navigate", BrowserNavigate)
+	r.Register("browser.close", noParams(BrowserClose))
+	r.Register("browser.url", BrowserURL)
 	r.Register("nginx.sites", noParams(NginxSites))
 	r.Register("nginx.sites.full", noParams(NginxSitesP3))
 	r.Register("nginx.test", NginxTest)

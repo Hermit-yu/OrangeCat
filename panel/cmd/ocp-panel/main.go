@@ -147,6 +147,12 @@ func main() {
 	mux.HandleFunc("/api/apps/catalog", p.requireAuth(p.handleAppsCatalog))
 	mux.HandleFunc("/api/apps/install", p.handleAppsInstall)
 	mux.HandleFunc("/api/apps/uninstall", p.handleAppsUninstall)
+	// P13：隔离式内置浏览器（status 只读；open/navigate/close 写门+审计）
+	mux.HandleFunc("/api/browser/status", p.requireAuth(p.handleBrowserStatus))
+	mux.HandleFunc("/api/browser/open", p.handleBrowserOpen)
+	mux.HandleFunc("/api/browser/navigate", p.handleBrowserNavigate)
+	mux.HandleFunc("/api/browser/close", p.handleBrowserClose)
+	mux.HandleFunc("/api/browser/url", p.requireAuth(p.handleBrowserURL))
 	mux.HandleFunc("/api/password", p.requireAuth(p.handleChangePassword))
 	mux.HandleFunc("/api/processes/kill", p.handleProcessKill)
 	mux.HandleFunc("/api/history", p.requireAuth(p.handleHistory))
