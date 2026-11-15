@@ -1622,7 +1622,58 @@ if(btnSetPw)btnSetPw.addEventListener("click",async()=>{
 });
 // ── AI 助手（切片 A：真实绑定 agnes 端点） ──
 let aiEnabled=false,aiSending=false;
-const aiMessages=[]; // {role, content}
+// P9：多会话——每会话独立 history。aiSessions[i].messages 即该会话的 {role,content} 列表。
+let aiSessions=[{id:"s1",name:"会话 1",messages:[]}];
+let aiCur=0;
+const AI_MAX_SESSIONS=6;
+function aiCurMessages(){return aiSessions[aiCur]?aiSessions[aiCur].messages:[]}
+function aiAppendToCur(msg){aiSessions[aiCur].messages.push(msg)}
+function aiRenderSessions(){
+  // 测试桩环境无 document.createElement，浏览器才渲染会话列表
+  if(typeof document.createElement!=="function")return;
+  const wrap=document.querySelector(".ai-sessions");
+  if(!wrap)return;
+  // 保留 head + 新建按钮，重建中间的会话条目（测试桩环境 querySelector 可能不可用）
+  let head=null,btn=null;
+  try{head=wrap.querySelector(".ai-sessions__head");btn=wrap.querySelector("#aiNewChat");}catch(e){}
+  try{wrap.querySelectorAll(".ai-session").forEach(el=>el.remove());}catch(e){}
+  aiSessions.forEach((s,i)=>{
+    const b=document.createElement("button");
+    b.className="ai-session"+(i===aiCur?" active":"");
+    b.dataset.i=String(i);
+    b.innerHTML=`<span class="ai-session__dot"></span><span class="ai-session__name">${esc(s.name)}</span><span class="ai-session__del" title="删除会话">×</span>`;
+    b.addEventListener("click",(e)=>{
+      if(e.target.classList.contains("ai-session__del")){aiDelSession(i);return}
+      aiCur=i;aiRenderSessions();aiRenderMsgs();
+    });
+    try{wrap.insertBefore(b,btn||null)}catch(e){wrap.appendChild(b)}
+  });
+}
+function aiNewSession(){
+  if(aiSessions.length>=AI_MAX_SESSIONS){const err=document.getElementById("aiErr");if(err)err.textContent="会话数已达上限（"+AI_MAX_SESSIONS+"）";return}
+  const n=aiSessions.length+1;
+  aiSessions.push({id:"s"+Date.now(),name:"会话 "+n,messages:[]});
+  aiCur=aiSessions.length-1;aiRenderSessions();aiRenderMsgs();
+}
+function aiDelSession(i){
+  if(aiSessions.length<=1){const err=document.getElementById("aiErr");if(err)err.textContent="至少保留一个会话";return}
+  aiSessions.splice(i,1);
+  if(aiCur>=aiSessions.length)aiCur=aiSessions.length-1;
+  aiRenderSessions();aiRenderMsgs();
+}
+function aiRenderMsgs(){
+  const box=document.getElementById("aiMsgs");if(!box)return;
+  box.innerHTML="";
+  const msgs=aiCurMessages();
+  if(msgs.length===0){
+    box.innerHTML='<div class="ai-empty"><div class="ai-empty__icon"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"></path><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z"></path></svg></div><div>输入问题，AI 助手将基于真实模型回答</div><div class="muted">会话仅保存在当前页面；刷新后重置</div></div>';
+    return;
+  }
+  msgs.forEach(m=>{aiAppendMsg(m.role,m.content)});
+}
+// P9：provider 选择（agnes 真实；anthropic/gemini 未适配，标依赖未就绪）
+let aiProvider="agnes";
+const AI_PROVIDERS=[{id:"agnes",name:"agnes-3.0-flash (真实)",ok:true},{id:"anthropic",name:"Anthropic Claude (未适配)",ok:false},{id:"gemini",name:"Google Gemini (未适配)",ok:false}];
 function aiConnSet(on,text){const d=document.getElementById("aiConn");const t=document.getElementById("aiConnText");const dot=document.getElementById("aiConnDot");if(dot)dot.className="dot"+(on?"":" off");if(t)t.textContent=text}
 function aiAppendMsg(role,content){
   const box=document.getElementById("aiMsgs");
@@ -1653,17 +1704,17 @@ async function aiSend(){
   document.getElementById("aiErr").textContent="";
   inp.value="";
   aiAppendMsg("user",text);
-  aiMessages.push({role:"user",content:text});
+  aiAppendToCur({role:"user",content:text});
   aiTyping(true);
   try{
     const csrf=csrfCookie();
     // 只传最近 20 条历史（agent 侧也会强制上限）
-    const hist=aiMessages.slice(-20).filter(m=>m.role!=="user"||m.content!==text);
-    const r=await fetch(APP_BASE+"/api/ai/chat",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrf},body:JSON.stringify({message:text,history:hist})});
+    const hist=aiCurMessages().slice(-20).filter(m=>m.role!=="user"||m.content!==text);
+    const r=await fetch(APP_BASE+"/api/ai/chat",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrf},body:JSON.stringify({message:text,history:hist,model:aiProvider==="agnes"?"agnes-3.0-flash":"",base_url:aiProvider==="agnes"?"":"",provider:aiProvider})});
     const j=await readJSONSafe(r);
     if(!j.ok){document.getElementById("aiErr").textContent="请求失败："+((j.data&&j.data.agent_error)||j.text||("HTTP "+r.status));aiTyping(false);return}
     const reply=(j.data.result&&j.data.result.reply)||"";
-    if(reply){aiAppendMsg("assistant",reply);aiMessages.push({role:"assistant",content:reply});}
+    if(reply){aiAppendMsg("assistant",reply);aiAppendToCur({role:"assistant",content:reply});}
     else document.getElementById("aiErr").textContent="AI 返回了空内容";
   }catch(e){document.getElementById("aiErr").textContent="请求失败："+e}
   finally{aiTyping(false);aiSending=false;const s=document.getElementById("aiSend");if(s)s.disabled=false;}
@@ -1678,9 +1729,17 @@ async function aiInit(){
 }
 document.getElementById("aiSend").addEventListener("click",aiSend);
 document.getElementById("aiInput").addEventListener("keydown",(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();aiSend();}});
-document.getElementById("aiNewChat").addEventListener("click",()=>{aiMessages.length=0;const box=document.getElementById("aiMsgs");if(box)box.innerHTML='<div class="ai-empty"><div class="ai-empty__icon"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"></path><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z"></path></svg></div><div>输入问题，AI 助手将基于真实模型回答</div><div class="muted">会话仅保存在当前页面；刷新后重置</div></div>';});
+document.getElementById("aiNewChat").addEventListener("click",aiNewSession);
+document.getElementById("aiModelTag").addEventListener("click",()=>{
+  // provider 循环切换：agnes → anthropic → gemini（未适配标未就绪）
+  const idx=AI_PROVIDERS.findIndex(p=>p.id===aiProvider);
+  const next=AI_PROVIDERS[(idx+1)%AI_PROVIDERS.length];
+  if(!next.ok){document.getElementById("aiErr").textContent="provider "+next.name+" 未适配（当前仅 agnes 真实可用）";return}
+  aiProvider=next.id;
+  document.getElementById("aiModelTag").textContent=next.name;
+});
+aiRenderSessions();
 aiInit();
-(async()=>{const r=await fetch(APP_BASE+"/api/overview",{credentials:"same-origin"});if(r.status===401)return;refresh().catch(()=>{});setInterval(()=>refresh().catch(()=>{}),5000)})();
-</script>
+(async()=>{const r=await fetch(APP_BASE+"/api/overview",{credentials:"same-origin"});if(r.status===401)return;refresh().catch(()=>{});setInterval(()=>refresh().catch(()=>{}),5000)})();</script>
 </body>
 </html>
