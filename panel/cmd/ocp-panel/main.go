@@ -137,6 +137,9 @@ func main() {
 	mux.HandleFunc("/api/fs/restore", p.handleFsRestore)
 	mux.HandleFunc("/api/fs/upload", p.handleFsUpload)
 	mux.HandleFunc("/api/fs/download", p.handleFsDownload)
+	mux.HandleFunc("/api/task/start", p.requireAuth(p.handleTaskStart))
+	mux.HandleFunc("/api/task/status", p.requireAuth(p.handleTaskStatus))
+	mux.HandleFunc("/api/task/log", p.requireAuth(p.handleTaskLog))
 	mux.HandleFunc("/", p.handleIndex)
 
 	srv := &http.Server{Addr: *addr, Handler: p.securityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}

@@ -74,6 +74,9 @@ func NewRegistry() *Registry {
 	r.Register("fs.restore", FsRestore)
 	r.Register("fs.upload", FsUpload)
 	r.Register("fs.download", FsDownload)
+	r.Register("task.start", TaskStart)
+	r.Register("task.status", TaskStatus)
+	r.Register("task.log", TaskLog)
 	return r
 }
 

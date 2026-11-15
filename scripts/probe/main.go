@@ -179,6 +179,42 @@ func probeFsTransfer() (bool, string) {
 	return true, ""
 }
 
+// probeTask starts a hostdiag task, polls to done, and reads back its log.
+func probeTask() (bool, string) {
+	ok, data := probeWithParams("task.start", map[string]any{"type": "hostdiag"})
+	if !ok || data == nil {
+		return false, "task.start failed"
+	}
+	id, _ := data["task_id"].(string)
+	if id == "" {
+		return false, "task.start returned no id"
+	}
+	var state string
+	for i := 0; i < 50; i++ {
+		time.Sleep(20 * time.Millisecond)
+		ok, s := probeWithParams("task.status", map[string]any{"task_id": id})
+		if !ok || s == nil {
+			return false, "task.status failed"
+		}
+		state, _ = s["state"].(string)
+		if state == "done" || state == "failed" {
+			break
+		}
+	}
+	if state != "done" {
+		return false, "task did not finish: " + state
+	}
+	ok, lg := probeWithParams("task.log", map[string]any{"task_id": id})
+	if !ok || lg == nil {
+		return false, "task.log failed"
+	}
+	lines, _ := lg["lines"].([]any)
+	if len(lines) == 0 {
+		return false, "task.log empty"
+	}
+	return true, ""
+}
+
 type req struct {
 	ID     string         `json:"id"`
 	Action string         `json:"action"`
@@ -259,6 +295,16 @@ func main() {
 	entry = map[string]any{"action": "fs.download", "ok": upOK}
 	if !upOK {
 		entry["error"] = upErr
+		failures++
+	}
+	line, _ = json.Marshal(entry)
+	fmt.Println(string(line))
+
+	// task start/status/log cycle (dynamic task_id).
+	taskOK, taskErr := probeTask()
+	entry = map[string]any{"action": "task.log", "ok": taskOK}
+	if !taskOK {
+		entry["error"] = taskErr
 		failures++
 	}
 	line, _ = json.Marshal(entry)

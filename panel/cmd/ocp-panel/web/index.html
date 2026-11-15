@@ -64,6 +64,7 @@ section{margin-top:22px}section h2{font-size:14px;color:var(--dim);margin:0 0 10
   <section><h2>容器日志（有界）</h2><input id="logName" placeholder="容器名" class="pad"><input id="logLines" value="100" placeholder="行数" class="pad"><button id="btnLogs" class="logout-button">查看日志</button><div id="logOut" class="card padtop small logbox"><div class="dim">输入容器名后查看</div></div></section>
   <section><h2>Nginx 站点（P3 发现，只读）</h2><div class="card table-card"><table id="nginxT"><thead><tr><th>server_name</th><th>配置文件</th><th>证书</th><th>到期</th><th>proxy</th></tr></thead><tbody></tbody></table></div><div class="card padtop small"><button id="btnNginxTest" class="logout-button">校验配置（nginx -t）</button> <button id="btnNginxReload" class="logout-button">重载生效</button><div id="nginxActionOut" class="padtop dim"></div></div></section>
   <section><h2>文件浏览（P4 只读）</h2><input id="fsPath" class="pad" size="48" value="/home/web" placeholder="绝对路径，如 /home/web"><button id="btnFsGo" class="logout-button">打开</button> <button id="btnFsUp" class="logout-button">上级</button> <input type="file" id="fsUploadFile" class="pad"><button id="btnFsUpload" class="logout-button">上传</button><div id="fsErr" class="padtop dim"></div><div class="card table-card padtop"><table id="fsT"><thead><tr><th>名称</th><th>类型</th><th>大小</th><th>修改时间</th><th>操作</th></tr></thead><tbody><tr><td colspan="4" class="dim">加载中…</td></tr></tbody></table></div><div class="card padtop small"><div id="fsPreviewHead" class="dim"></div><pre id="fsPreview" class="logbox"></pre><div class="padtop"><button id="btnFsSave" class="logout-button" disabled>保存</button> <button id="btnFsRollback" class="logout-button" disabled>回滚</button><button id="btnFsRestore" class="logout-button" disabled>恢复文件</button> <span id="fsWriteOut" class="dim padtop"></span></div></div></section>
+<div class="card padtop"><h2>后台任务</h2><button id="btnTaskHostdiag" class="logout-button">主机体检</button> <button id="btnTaskRefresh" class="logout-button">刷新状态</button><div id="taskStatus" class="dim padtop">未启动任务</div><pre id="taskLog" class="logbox padtop"></pre></div>
 <section><h2>网卡流量计数</h2><div class="card table-card"><table id="netT"><thead><tr><th>接口</th><th>rx</th><th>tx</th></tr></thead><tbody></tbody></table></div></section>
   <section><h2>进程 Top（按内存）<span class="dim muted">· 可结束</span></h2><div class="card table-card"><table id="procT"><thead><tr><th>PID</th><th>名称</th><th>UID</th><th>RSS MB</th><th>操作</th></tr></thead><tbody></tbody></table></div></section>
   <section><h2>服务状态（实时，只读）</h2><input id="svcFilter" placeholder="按名称过滤…" class="pad"><div class="card table-card"><table id="svcT"><thead><tr><th>单元</th><th>loaded</th><th>active</th><th>sub</th></tr></thead><tbody></tbody></table></div></section>
@@ -250,6 +251,33 @@ async function fsRestoreFile(path,snapshot){
     else document.getElementById("fsErr").textContent="恢复失败："+(d.agent_error||"未知错误");
   }catch(e){document.getElementById("fsErr").textContent="请求失败："+e}
 }
+let __taskId=null;
+async function taskStart(){
+  const st=document.getElementById("taskStatus");st.textContent="启动中...";
+  const r=await fetch(APP_BASE+"/api/task/start",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/x-www-form-urlencoded","X-CSRF-Token":csrfCookie()},body:"type=hostdiag"});
+  const d=await r.json();
+  if(d.ok){__taskId=d.result.task_id;st.textContent="任务 "+__taskId+" 运行中";taskRefresh();}
+  else{st.textContent="启动失败："+(d.agent_error||"未知");}
+}
+async function taskRefresh(){
+  if(!__taskId)return;
+  const st=document.getElementById("taskStatus");
+  try{
+    const r=await fetch(APP_BASE+"/api/task/status?task_id="+encodeURIComponent(__taskId),{credentials:"same-origin",headers:{"X-CSRF-Token":csrfCookie()}});
+    const d=await r.json();
+    if(!d.ok){st.textContent="状态查询失败："+(d.agent_error||"未知");return}
+    const res=d.result;st.textContent="任务 "+__taskId+" "+res.state+(res.error?("："+res.error):"");
+    if(res.state==="done"){taskLog();st.textContent="任务 "+__taskId+" 完成";}
+  }catch(e){st.textContent="请求失败："+e}
+}
+async function taskLog(){
+  if(!__taskId)return;
+  try{
+    const r=await fetch(APP_BASE+"/api/task/log?task_id="+encodeURIComponent(__taskId),{credentials:"same-origin",headers:{"X-CSRF-Token":csrfCookie()}});
+    const d=await r.json();
+    if(d.ok){document.getElementById("taskLog").textContent=(d.result.lines||[]).join("\n");}
+  }catch(e){document.getElementById("taskLog").textContent="日志查询失败："+e}
+}
 async function fsUpload(){
   const inp=document.getElementById("fsUploadFile");
   const f=inp.files&&inp.files[0];
@@ -308,6 +336,8 @@ document.getElementById("btnFsGo").addEventListener("click",()=>{const v=documen
 document.getElementById("btnFsUp").addEventListener("click",()=>fsLoad(fsParent(fsCurrent)).catch(()=>{}));
 document.getElementById("btnFsSave").addEventListener("click",handleFsSave);
 document.getElementById("btnFsRollback").addEventListener("click",handleFsRollback);
+document.getElementById("btnTaskHostdiag").addEventListener("click",taskStart);
+document.getElementById("btnTaskRefresh").addEventListener("click",taskRefresh);
 document.getElementById("btnFsUpload").addEventListener("click",fsUpload);
 document.getElementById("btnFsRestore").addEventListener("click",()=>{const p=prompt("恢复文件的快照路径：",fsLastSnapshot||"");if(!p)return;if(!fsCurrentFile){document.getElementById("fsWriteOut").textContent="先打开目标目录";return}fsRestoreFile(fsCurrentFile,p).catch(()=>{});});
 async function loadServices(){svcFilter.dataset.last=svcFilter.value;const f=encodeURIComponent(svcFilter.value||"");const r=await fetch(APP_BASE+"/api/services?filter="+f,{credentials:"same-origin"});const d=await r.json();const svc=(d.services&&d.services.services)||[];const tb=document.querySelector("#svcT tbody");tb.innerHTML=svc.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.loaded)}</td><td>${esc(s.active)}</td><td>${esc(s.sub)}</td></tr>`).join("")||`<tr><td colspan="4" class="dim">服务数据暂不可用：${esc(d.agent_error||"未返回数据")}</td></tr>`;svcFilter.dataset.loaded="1";}
