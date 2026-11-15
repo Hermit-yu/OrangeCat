@@ -127,6 +127,9 @@ func main() {
 	// P3：Nginx 站点与证书发现 + test/reload 写操作
 	mux.HandleFunc("/api/nginx/full", p.requireAuth(p.handleNginxFull))
 	mux.HandleFunc("/api/nginx/action", p.handleNginxAction)
+	mux.HandleFunc("/api/fs/list", p.requireAuth(p.handleFsList))
+	mux.HandleFunc("/api/fs/read", p.requireAuth(p.handleFsRead))
+	mux.HandleFunc("/api/fs/stat", p.requireAuth(p.handleFsStat))
 	mux.HandleFunc("/", p.handleIndex)
 
 	srv := &http.Server{Addr: *addr, Handler: p.securityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}

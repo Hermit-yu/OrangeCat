@@ -64,6 +64,9 @@ func NewRegistry() *Registry {
 	r.Register("nginx.reload", NginxReload)
 	r.Register("net.interfaces", noParams(NetInterfaces))
 	r.Register("processes", Processes)
+	r.Register("fs.list", FsList)
+	r.Register("fs.read", FsRead)
+	r.Register("fs.stat", FsStat)
 	return r
 }
 

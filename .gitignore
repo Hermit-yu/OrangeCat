@@ -4,3 +4,4 @@ bin/ocp-panel
 bin/ocp-sampler
 # 部署回滚用的临时备份
 bin/*.bak-*
+scripts/probe/probe

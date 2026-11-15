@@ -33,6 +33,9 @@ var actions = []string{
 	"nginx.test",
 	"net.interfaces",
 	"processes",
+	"fs.list",
+	"fs.read",
+	"fs.stat",
 }
 
 // params overrides the default empty params for actions that need them.
@@ -43,6 +46,9 @@ var actionParams = map[string]map[string]any{
 	"docker.stats":     {"name": "nginx"},
 	"docker.logs":      {"name": "nginx", "lines": 5.0},
 	"compose.validate": {"path": "/opt/horizon/docker-compose.yml"},
+	"fs.list":          {"path": "/home/web/conf.d"},
+	"fs.read":          {"path": "/home/web/conf.d/default.conf"},
+	"fs.stat":          {"path": "/home/web/conf.d"},
 }
 
 type req struct {
