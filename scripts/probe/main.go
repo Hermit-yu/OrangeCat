@@ -21,14 +21,26 @@ var actions = []string{
 	"health.check",
 	"docker.summary",
 	"docker.containers",
+	"docker.images",
+	"docker.networks",
+	"docker.volumes",
+	"docker.stats",
+	"docker.logs",
+	"compose.projects",
+	"compose.validate",
 	"nginx.sites",
 	"net.interfaces",
 	"processes",
 }
 
 // params overrides the default empty params for actions that need them.
+// docker.stats/logs are probed against a fixed, non-destructive target so the
+// deployment check never touches a production container in a write path.
 var actionParams = map[string]map[string]any{
-	"processes": {"top": 10.0},
+	"processes":        {"top": 10.0},
+	"docker.stats":     {"name": "nginx"},
+	"docker.logs":      {"name": "nginx", "lines": 5.0},
+	"compose.validate": {"path": "/opt/horizon/docker-compose.yml"},
 }
 
 type req struct {

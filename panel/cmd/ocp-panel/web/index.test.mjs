@@ -30,6 +30,10 @@ function createApp(cookie) {
     // implicit named-element globals referenced by the inline script
     svcFilter: docEl,
     chartInfo: docEl,
+    imgRefresh: docEl,
+    logName: docEl,
+    logLines: docEl,
+    logOut: docEl,
     confirm() { return false; },
     alert() {},
     setInterval() {},
@@ -80,4 +84,40 @@ test("process kill success is decided by the ok flag", () => {
   const js = scripts[0][1];
   assert.match(js, /j\.ok===true/, "kill confirmation must honor the ok flag");
   assert.doesNotMatch(js, /result\|\|\{\}\)\.sent===true/, "must not rely on result.sent alone");
+});
+
+// P2：容器生命周期请求体必须带上后端 DisallowUnknownFields 只认的三个键，
+// 而且 force 只在强杀时为 true（与面板层的 force=true 门槛一一对应）。
+test("container action posts only the allowed keys and gates force on kill", () => {
+  const js = scripts[0][1];
+  assert.match(js, /\/api\/docker\/action/, "must call the container action endpoint");
+  assert.match(js, /\{name,action,force:kill\}/, "request body must carry name/action/force");
+  assert.match(js, /const action=kill\?"KILL":stop\?"STOP":restart\?"RESTART":"START"/,
+    "all four lifecycle verbs must map to an action");
+  assert.doesNotMatch(js, /\{name,name:name/, "must not emit a duplicated name key");
+});
+
+// P2：强杀必须二次确认，且是唯一带危险标记的按钮。
+test("container kill asks for a second confirmation", () => {
+  const js = scripts[0][1];
+  assert.match(js, /if\(kill\)ok=confirm\(/, "kill must ask twice");
+  assert.match(js, /actdanger/, "kill button must be visually marked dangerous");
+});
+
+// P2：容器日志必须走有界接口，且行数取自用户输入而不是写死的 500。
+test("container logs use the bounded endpoint with user line count", () => {
+  const js = scripts[0][1];
+  assert.match(js, /\/api\/docker\/logs\?name=/, "must query the bounded logs endpoint");
+  assert.ok(js.includes('&lines="+encodeURIComponent(logLines.value'),
+      "line count must come from the input");
+  assert.match(js, /payload\.truncated/, "must surface the truncation flag");
+});
+
+// P2：镜像/网络/卷是三张只读表，字段映射要锁住，避免后端字段改名前端静默空表。
+test("docker resources render the documented fields", () => {
+  const js = scripts[0][1];
+  assert.match(js, /m\.repo\|\|"—"/, "images must read repo");
+  assert.match(js, /n\.containers\|\|\[\]\)\.join/, "networks must read member containers");
+  assert.match(js, /v\.used_by\|\|\[\]/, "volumes must read using containers");
+  assert.match(js, /im\.images&&im\.images\.images/, "images must unwrap the api envelope");
 });

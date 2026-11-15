@@ -115,6 +115,15 @@ func main() {
 	mux.HandleFunc("/api/diagnostics", p.requireAuth(p.handleDiagnostics))
 	mux.HandleFunc("/api/processes/kill", p.handleProcessKill)
 	mux.HandleFunc("/api/history", p.requireAuth(p.handleHistory))
+	// P2：Docker 从只读到可管理
+	mux.HandleFunc("/api/docker/images", p.requireAuth(p.handleDockerImages))
+	mux.HandleFunc("/api/docker/networks", p.requireAuth(p.handleDockerNetworks))
+	mux.HandleFunc("/api/docker/volumes", p.requireAuth(p.handleDockerVolumes))
+	mux.HandleFunc("/api/docker/logs", p.requireAuth(p.handleDockerLogs))
+	mux.HandleFunc("/api/docker/stats", p.requireAuth(p.handleDockerStats))
+	mux.HandleFunc("/api/compose/projects", p.requireAuth(p.handleComposeProjects))
+	mux.HandleFunc("/api/compose/validate", p.requireAuth(p.handleComposeValidate))
+	mux.HandleFunc("/api/docker/action", p.handleContainerAction)
 	mux.HandleFunc("/", p.handleIndex)
 
 	srv := &http.Server{Addr: *addr, Handler: p.securityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}

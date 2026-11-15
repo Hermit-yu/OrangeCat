@@ -148,6 +148,15 @@
 
 验收：面板与 Docker Engine 双向核对；只读 API 与写 API 权限分离；故障注入含 Docker 不可达、恶意名称/参数、超时、重复请求和删除失败；生产容器不得作为破坏性 E2E 目标。
 
+**状态（2026-11-15）：已完成并上线。**
+
+- 只读动作：`docker.images` / `docker.networks` / `docker.volumes` / `docker.logs` / `docker.stats` / `compose.projects` / `compose.validate`，全部经真机 Docker 29.5.2 验收（24 镜像 / 10 网络 / 11 卷 / 3 compose 项目，计数与基准一致）。
+- 写动作：`docker.container.action`（start/stop/restart/kill），面板层三重门（session + CSRF 双提交 + 可信 Origin），KILL 强制 `force=true`，名称白名单，无 shell/拼接注入面。
+- 审计：新增 `container_action` 类型与 `container_action_sent/failed/request_invalid` reason；写操作逐出口留痕。
+- 前端：容器表增生命周期操作按钮（启动/重启/停止/强杀，强杀二次确认）；镜像/网络/卷三张只读表（首次加载+手动刷新）；容器日志有界视图（行数上限+截断标记）。
+- 真机验收：STOP→exited、START→running、RESTART→running 均 `sent=true` 且 `post_state` 与 docker 实际状态一致；拒绝路径（非法 action/名称/缺 force/未知字段）400；三重门 403；审计成功+拒绝均留痕。生产容器未作破坏性 E2E。
+- 已知未完成：`compose` 的 start/stop/up/down（需要绝对路径入参 = 给 Web 进程开读任意 compose 文件的通道，必须先行路径白名单与生产确认，留待后续切片）；Vite 全栈工具箱方向 2 仍未实施（当前内联 `index.html`）。
+
 ### P3 — Nginx 站点与证书发现
 
 交付：存量 vhost、域名、反代及证书信息只读发现；证书到期视图；新增/修改反代模板和 Nginx test/reload/回滚。初期不变更现有站点、不接管证书续期器。

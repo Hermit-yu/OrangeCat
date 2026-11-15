@@ -5,7 +5,6 @@
 package main
 
 import (
-	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -69,24 +68,7 @@ func (p *panel) handleProcessKill(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method", http.StatusMethodNotAllowed)
 		return
 	}
-	if !p.sameOriginHost(r) {
-		http.Error(w, "跨站请求已拒绝", http.StatusForbidden)
-		return
-	}
-	c, err := r.Cookie("ocp_session")
-	if err != nil {
-		p.rejectAuth(w, r, authaudit.TypeProcessKill, authaudit.ReasonSessionMissing, http.StatusUnauthorized, "未登录")
-		return
-	}
-	s, ok := lookupSession(c.Value, p.loginNow())
-	if !ok {
-		p.rejectAuth(w, r, authaudit.TypeProcessKill, authaudit.ReasonSessionExpiredUnknown, http.StatusUnauthorized, "会话失效")
-		return
-	}
-	csfCookie, cookieErr := r.Cookie("ocp_csrf")
-	csfHeader := r.Header.Get("X-CSRF-Token")
-	if cookieErr != nil || s.csrf == "" || subtle.ConstantTimeCompare([]byte(csfCookie.Value), []byte(s.csrf)) != 1 || subtle.ConstantTimeCompare([]byte(csfHeader), []byte(s.csrf)) != 1 {
-		p.rejectAuth(w, r, authaudit.TypeProcessKill, authaudit.ReasonCSRFFailed, http.StatusForbidden, "安全校验失败")
+	if _, ok := p.requireWriteAccess(w, r, authaudit.TypeProcessKill); !ok {
 		return
 	}
 

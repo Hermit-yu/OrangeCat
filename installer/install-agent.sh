@@ -70,10 +70,20 @@ systemctl is-active --quiet ocp-agent
 socket_meta=$(stat -c '%a:%G' /run/ocp/agent.sock)
 [[ "$socket_meta" == "660:ocp-agent" ]]
 
-# 探针必须逐行解析真实响应，且恰好 10 个只读 action 全部成功。
+# 探针必须逐行解析真实响应，且所有只读 action 全部成功。
+# 不断言固定动作数：数量会随里程碑增长，断言固定值只会造成安装器与探针漂移。
 probe_output=$(cd "$PREFIX/scripts/probe" && go run main.go)
-probe_count=$(printf '%s\n' "$probe_output" | python3 -c 'import json,sys; print(sum(1 for line in sys.stdin if line.strip() and json.loads(line).get("ok") is True))')
-[[ "$probe_count" == 10 ]]
-echo "PASS：Agent active；socket root:ocp-agent/0660；10/10 动作探针通过。"
+probe_summary=$(printf '%s\n' "$probe_output" | python3 -c 'import json,sys
+lines=[l for l in sys.stdin if l.strip()]
+ok=sum(1 for l in lines if json.loads(l).get("ok") is True)
+print(f"{ok} {len(lines)}")')
+probe_ok=${probe_summary%% *}
+probe_total=${probe_summary##* }
+if [[ -z "$probe_total" || "$probe_ok" != "$probe_total" ]]; then
+  printf '%s\n' "$probe_output" >&2
+  echo "探针未全部通过（成功 $probe_ok / 共 ${probe_total:-0}）；未继续安装。" >&2
+  exit 1
+fi
+echo "PASS：Agent active；socket root:ocp-agent/0660；$probe_ok/$probe_total 动作探针通过。"
 echo "回滚材料：$BACKUP"
 trap - ERR
