@@ -273,6 +273,17 @@ section .panel-card{margin-bottom:22px}
 .compose-card__row{display:flex;gap:8px;flex-wrap:wrap}
 .compose-card__row .logout-button{font-size:11px;padding:4px 10px}
 .compose-card__err{font-size:11px;color:var(--danger);margin-top:6px}
+/* 诊断工具卡片 */
+.diag-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.diag-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;padding:14px}
+.diag-card.is-unavailable{opacity:.62}
+.diag-card__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.diag-card__name{font-weight:600;font-size:13px}
+.diag-badge{font-size:10px;color:var(--text-muted);border:1px solid var(--border);border-radius:999px;padding:2px 8px}
+.diag-badge.real{color:#3f9d63;border-color:#3f9d63;background:rgba(63,157,99,.08)}
+.diag-card__desc{font-size:11px;color:var(--text-muted);margin-bottom:10px;line-height:1.5}
+.diag-card__row{display:flex;gap:8px}
+.diag-card__out{font-size:11px;color:var(--text);margin-top:10px;white-space:pre-wrap;word-break:break-all;max-height:220px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.5}
 .ai-err{color:var(--danger);font-size:12px;padding:0 2px}
 .ai-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-muted);padding:40px}
 .ai-empty .ai-empty__icon{width:52px;height:52px;border-radius:14px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center}
@@ -573,10 +584,51 @@ section .panel-card{margin-bottom:22px}
         </section>
         <!-- 诊断 -->
         <section id="secDiag" class="view hidden">
-          <div class="section-head">链路诊断（Ping / TCP / HTTP）</div>
-          <div class="panel-card pad0">
-            <div class="padtop diag-toolbar"><button id="btnDiag" class="logout-button">运行诊断</button></div>
-            <table id="diagT"><thead><tr><th>目标</th><th>类型</th><th>结果</th><th>详情</th></tr></thead><tbody><tr><td colspan="4" class="dim">未运行</td></tr></tbody></table>
+          <div class="section-head">诊断工具（真实执行 · 8 项）</div>
+          <div class="diag-grid" id="diagGrid">
+            <div class="diag-card" data-tool="net">
+              <div class="diag-card__head"><span class="diag-card__name">网络质量检查</span><span class="diag-badge real">真实</span></div>
+              <div class="diag-card__desc">Ping / TCP / HTTP 探测（Cloudflare、阿里 DNS）</div>
+              <div class="diag-card__row"><button class="logout-button btn-diag-run" data-tool="net">运行</button></div>
+              <div class="diag-card__out" data-out="net"></div>
+            </div>
+            <div class="diag-card" data-tool="health">
+              <div class="diag-card__head"><span class="diag-card__name">服务器健康检查</span><span class="diag-badge real">真实</span></div>
+              <div class="diag-card__desc">内存 / 负载 / 交换分区 / 磁盘水位</div>
+              <div class="diag-card__row"><button class="logout-button btn-diag-run" data-tool="health">运行</button></div>
+              <div class="diag-card__out" data-out="health"></div>
+            </div>
+            <div class="diag-card" data-tool="hostdiag">
+              <div class="diag-card__head"><span class="diag-card__name">服务器诊断</span><span class="diag-badge real">真实</span></div>
+              <div class="diag-card__desc">后台 hostdiag 任务（系统事实采集）</div>
+              <div class="diag-card__row"><button class="logout-button btn-diag-run" data-tool="hostdiag">运行</button></div>
+              <div class="diag-card__out" data-out="hostdiag"></div>
+            </div>
+            <div class="diag-card is-unavailable" data-tool="bench">
+              <div class="diag-card__head"><span class="diag-card__name">综合基准测试</span><span class="diag-badge">依赖未就绪</span></div>
+              <div class="diag-card__desc">Comprehensive benchmark（需外部基准脚本）</div>
+              <div class="diag-card__row"><button class="logout-button" disabled>未就绪</button></div>
+            </div>
+            <div class="diag-card is-unavailable" data-tool="speed">
+              <div class="diag-card__head"><span class="diag-card__name">SuperSpeed 测速</span><span class="diag-badge">依赖未就绪</span></div>
+              <div class="diag-card__desc">SuperSpeed network test（需 speedtest 客户端）</div>
+              <div class="diag-card__row"><button class="logout-button" disabled>未就绪</button></div>
+            </div>
+            <div class="diag-card is-unavailable" data-tool="yabs">
+              <div class="diag-card__head"><span class="diag-card__name">YABS 基准</span><span class="diag-badge">依赖未就绪</span></div>
+              <div class="diag-card__desc">Yet Another Bench Script（需外部脚本）</div>
+              <div class="diag-card__row"><button class="logout-button" disabled>未就绪</button></div>
+            </div>
+            <div class="diag-card is-unavailable" data-tool="tcpq">
+              <div class="diag-card__head"><span class="diag-card__name">TCP 质量检查</span><span class="diag-badge">依赖未就绪</span></div>
+              <div class="diag-card__desc">TcpQuality TCP quality check（需 tcp 探测工具）</div>
+              <div class="diag-card__row"><button class="logout-button" disabled>未就绪</button></div>
+            </div>
+            <div class="diag-card is-unavailable" data-tool="chatgpt">
+              <div class="diag-card__head"><span class="diag-card__name">ChatGPT 访问检查</span><span class="diag-badge">依赖未就绪</span></div>
+              <div class="diag-card__desc">ChatGPT access check（需 AI 端点连通探测）</div>
+              <div class="diag-card__row"><button class="logout-button" disabled>未就绪</button></div>
+            </div>
           </div>
         </section>
         <!-- 图表 -->
@@ -1135,7 +1187,37 @@ document.getElementById("btnLogs").addEventListener("click",async()=>{
   }catch(e){out.innerHTML='<div class="logdim">请求失败：'+esc(e)+'</div>'}
 });
 document.getElementById("btnHealth").addEventListener("click",async()=>{const out=document.getElementById("healthOut");out.innerHTML='<div class="dim">体检中…</div>';const r=await fetch(APP_BASE+"/api/health?scope=detailed",{credentials:"same-origin"});const d=await r.json();const rep=(d.report&&d.report.report)||d.report;if(!rep){out.innerHTML='<div class="err">'+esc(d.agent_error||"体检失败")+'</div>';return}const st=esc(rep.overall||"?");const rows=Object.entries((rep.checks||{})).map(([k,v])=>{const cls=(v.status==="critical"||v.status==="error")?"sterr":(v.status==="warning"?"stwarn":"stok");return `<div class="strow">${esc(k)} <span class="${cls}">${esc(v.status||"?")}</span>${v.used_percent!==undefined?` · 使用 ${v.used_percent}%`:v.reason?` · ${esc(v.reason)}`:""}</div>`}).join("");out.innerHTML=`<div class="mb6">总体：<b>${st}</b></div>${rows}`;});
-document.getElementById("btnDiag").addEventListener("click",async()=>{const tb=document.querySelector("#diagT tbody");tb.innerHTML='<tr><td colspan="4" class="dim">诊断中…（最多约 30 秒）</td></tr>';const r=await fetch(APP_BASE+"/api/diagnostics",{credentials:"same-origin"});const d=await r.json();const res=(d.diagnostics&&d.diagnostics.results)||[];tb.innerHTML=res.map(x=>`<tr><td>${esc(x.target)}</td><td>${esc(x.kind)}</td><td class="${x.ok?"stok":"sterr"}">${x.ok?"ok":"fail"}</td><td class="dim">${esc(x.status!==undefined?("HTTP "+x.status):x.rtt_ms!==undefined?("rtt "+x.rtt_ms+"ms"):x.error||x.loss||"-")}</td></tr>`).join("")||`<tr><td colspan="4" class="dim">诊断不可用：${esc(d.agent_error||"无结果")}</td></tr>`;});
+// 切片 D：诊断工具面板（3 个真实工具 + hostdiag 任务；其余标依赖未就绪）
+const diagRun={net:async(out)=>{
+  out.textContent="诊断中…（最多约 30 秒）";
+  const r=await fetch(APP_BASE+"/api/diagnostics",{credentials:"same-origin"});
+  const j=await readJSONSafe(r);
+  const res=((j.data&&j.data.diagnostics&&j.data.diagnostics.results)||[]);
+  if(!res.length){out.textContent="诊断不可用："+(j.data&&j.data.agent_error||"无结果");return}
+  out.textContent=res.map(x=>`${x.target} [${x.kind}] ${x.ok?"OK":"FAIL"}${x.status!==undefined?(" HTTP "+x.status):x.rtt_ms!==undefined?(" rtt "+x.rtt_ms+"ms"):x.error?(" "+x.error):x.loss?(" 丢包 "+x.loss):""}`).join("\n");
+},health:async(out)=>{
+  out.textContent="体检中…";
+  const r=await fetch(APP_BASE+"/api/health?scope=detailed",{credentials:"same-origin"});
+  const j=await readJSONSafe(r);
+  const rep=(j.data&&j.data.report&&j.data.report.report)||(j.data&&j.data.report);
+  if(!rep){out.textContent=(j.data&&j.data.agent_error)||"体检失败";return}
+  const rows=Object.entries(rep.checks||{}).map(([k,v])=>{const cls=(v.status==="critical"||v.status==="error")?"✗":(v.status==="warning"?"⚠":"✓");return `${k}: ${cls} ${v.status||"?"}${v.used_percent!==undefined?(" 使用 "+v.used_percent+"%"):v.reason?(" "+v.reason):""}`}).join("\n");
+  out.textContent=`总体：${rep.overall||"?"}\n${rows}`;
+},hostdiag:async(out)=>{
+  out.textContent="提交 hostdiag 任务…";
+  const r=await fetch(APP_BASE+"/api/task/start",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/x-www-form-urlencoded","X-CSRF-Token":csrfCookie()},body:"type=hostdiag"});
+  const j=await readJSONSafe(r);
+  const id=(j.data&&j.data.task_id)||(j.data&&j.data.result&&j.data.result.task_id);
+  if(!id){out.textContent="任务提交失败："+(j.data&&j.data.agent_error||"无 task_id");return}
+  out.textContent="任务已提交（ID "+id+"），在「任务」页查看进度与日志";
+}};
+document.getElementById("diagGrid").querySelectorAll(".btn-diag-run").forEach(b=>b.addEventListener("click",async()=>{
+  const tool=b.dataset.tool;const out=document.querySelector(`.diag-card__out[data-out="${tool}"]`);
+  if(!out||!diagRun[tool])return;
+  b.disabled=true;const old=b.textContent;b.textContent="运行中…";
+  try{await diagRun[tool](out)}catch(e){out.textContent="请求失败："+e}
+  finally{b.disabled=false;b.textContent=old}
+}));
 async function loadChart(){const now=Math.floor(Date.now()/1000);const from=now-3600;const r=await fetch(APP_BASE+"/api/history?level=raw&from="+from+"&to="+now,{credentials:"same-origin"});const d=await r.json();const svg=document.getElementById("chartRaw");if(d.error){chartInfo.textContent="历史数据暂不可用："+d.error;return}const s=(d.samples||[]).map(p=>({cpu:p.CPU!==undefined?p.CPU:p.cpu,mem:p.Mem!==undefined?p.Mem:p.mem,ts:p.Ts!==undefined?p.Ts:p.ts}));if(!s.length){chartInfo.textContent="最近 1 小时尚无采样数据（采样器未运行或刚启动）";return}const W=900,H=160,pad=6;const x=(i)=>pad+(W-2*pad)*i/(Math.max(1,s.length-1));const y=(v)=>H-pad-(H-2*pad)*Math.min(100,Math.max(0,v))/100;const path=(k)=>s.map((p,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(p[k]).toFixed(1)).join(" ");svg.innerHTML=`<path d="${path("cpu")}" fill="none" stroke="var(--brand)" stroke-width="1.6"/><path d="${path("mem")}" fill="none" stroke="var(--success)" stroke-width="1.6"/><text x="${pad}" y="14" fill="#685f52" font-size="10">CPU</text><text x="${pad+34}" y="14" fill="#236e47" font-size="10">内存</text>`;chartInfo.textContent=`${s.length} 个采样 · 最近 ${Math.round((s[s.length-1].ts-s[0].ts)/60)} 分钟 · CPU 峰值 ${Math.max(...s.map(p=>p.cpu)).toFixed(1)}% · 内存峰值 ${Math.max(...s.map(p=>p.mem)).toFixed(1)}%`;chartInfo.dataset.loaded="1";}
 document.getElementById("btnRefresh").addEventListener("click",()=>refresh().catch(()=>{}));
 const bmr=document.getElementById("btnMonitorRefresh");if(bmr)bmr.addEventListener("click",()=>refresh().catch(()=>{}));
