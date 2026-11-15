@@ -129,6 +129,10 @@ func main() {
 	mux.HandleFunc("/api/notify/status", p.requireAuth(p.handleNotifyStatus))
 	mux.HandleFunc("/api/notify/test", p.handleNotifyTest)
 	mux.HandleFunc("/api/notify/alert", p.handleNotifyAlert)
+	// P8：集群节点（只读真实本机 + 单机诚实）
+	mux.HandleFunc("/api/cluster/nodes", p.requireAuth(p.handleClusterNodes))
+	mux.HandleFunc("/api/cluster/node", p.requireAuth(p.handleClusterNodeDetail))
+	mux.HandleFunc("/api/cluster/pair", p.handleClusterPair)
 	mux.HandleFunc("/api/password", p.requireAuth(p.handleChangePassword))
 	mux.HandleFunc("/api/processes/kill", p.handleProcessKill)
 	mux.HandleFunc("/api/history", p.requireAuth(p.handleHistory))
