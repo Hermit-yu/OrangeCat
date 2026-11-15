@@ -177,6 +177,13 @@
 
 验收：路径穿越、符号链接跳出、并发改写、超大文件、二进制误编辑、上传中断失败注入；每项成功写后独立 `stat`/hash/read-back；失败不留下半文件。
 
+状态（2026-11-15）：只读切片（P4-1）已完成并上线。
+- Agent `fs.list`（≤1000 条 + truncated 标记）、`fs.read`（≤256KB + truncated 标记；前 8KB NUL 拒绝时不返回内容，binary=true）、`fs.stat`；路径策略为规范化（绝对路径 / NUL 拒绝 / `filepath.Clean` 吸收 `..`），非 confinement——面板规划为根目录文件管理器，写操作切片再引入快照/原子替换/回滚。
+- Panel `/api/fs/{list,read,stat}`：GET only + `requireAuth` + path 非空校验，`agent_error` 原样透出；前端"文件浏览（P4 只读）"卡片：路径输入 + 打开/上级、目录导航、点击预览、二进制与截断标记、`..` 返回上级。
+- 门禁：agent/panel build+vet+test 全绿，check.sh 8/8 绿；安装探针扩到 22 项（fs.list/read/stat 均以真实路径实测）并通过。
+- 生产验收（hermes.taoque.top/orangecat/）：列出 /home/web 真实目录；导航进 /home/web/conf.d；预览 default.conf 真实内容（1.6 KB）；不存在路径诚实报错（lstat no such file or directory）；"上级"按钮回 /home/web。
+- 已知未完成：写操作（快照/原子替换/回滚）、上传/改名/删除、后台任务 API——均未设计实施；P4-1 只读路径不做 confinement，如后续确认需要根 confinement 则属契约变更，需单独立案。
+
 ### P5 — 受控终端与进程操作
 
 交付：默认关闭的 PTY 能力、独立开关、短时授权、连接/空闲/输出上限、主动关停、审计元信息；进程结束加启动时间校验。
