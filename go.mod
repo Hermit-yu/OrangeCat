@@ -2,14 +2,18 @@ module github.com/Hermit-yu/OrangeCatPanel
 
 go 1.26.0
 
-require modernc.org/sqlite v1.62.0
+require (
+	github.com/creack/pty v1.1.24
+	modernc.org/sqlite v1.62.0
+)
 
 require (
-	github.com/creack/pty v1.1.24 // indirect
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
+	github.com/pquerna/otp v1.4.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	modernc.org/libc v1.80.1 // indirect

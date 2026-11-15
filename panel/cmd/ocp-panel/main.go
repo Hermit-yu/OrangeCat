@@ -133,6 +133,16 @@ func main() {
 	mux.HandleFunc("/api/cluster/nodes", p.requireAuth(p.handleClusterNodes))
 	mux.HandleFunc("/api/cluster/node", p.requireAuth(p.handleClusterNodeDetail))
 	mux.HandleFunc("/api/cluster/pair", p.handleClusterPair)
+	// P9：公开只读分享（share page 未登录可访问；create/list/revoke 管理）
+	mux.HandleFunc("/share/", p.handleSharePage)
+	mux.HandleFunc("/api/share/create", p.handleShareCreate)
+	mux.HandleFunc("/api/share/list", p.requireAuth(p.handleShareList))
+	mux.HandleFunc("/api/share/revoke", p.handleShareRevoke)
+	// P9：TOTP 两步验证（setup/enable/disable 写门；status 只读）
+	mux.HandleFunc("/api/totp/status", p.requireAuth(p.handleTOTPStatus))
+	mux.HandleFunc("/api/totp/setup", p.handleTOTPSetup)
+	mux.HandleFunc("/api/totp/enable", p.handleTOTPEnable)
+	mux.HandleFunc("/api/totp/disable", p.handleTOTPDisable)
 	mux.HandleFunc("/api/password", p.requireAuth(p.handleChangePassword))
 	mux.HandleFunc("/api/processes/kill", p.handleProcessKill)
 	mux.HandleFunc("/api/history", p.requireAuth(p.handleHistory))
@@ -527,6 +537,7 @@ func (p *panel) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
+		TOTPCode string `json:"totp_code"`
 	}
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<10))
 	dec.DisallowUnknownFields()
@@ -570,6 +581,12 @@ func (p *panel) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if subtle.ConstantTimeCompare([]byte(in.Username), []byte("admin")) != 1 ||
 		subtle.ConstantTimeCompare([]byte(in.Password), []byte(p.password)) != 1 {
 		p.rejectAuth(w, r, authaudit.TypeLogin, "bad_credentials", http.StatusUnauthorized, "账号或密码错误")
+		return
+	}
+
+	// P9：TOTP 两步验证。启用后必须携带有效 code，否则拒绝（不降级）。
+	if totpEnabled() && !verifyTOTP(in.TOTPCode) {
+		p.rejectAuth(w, r, authaudit.TypeLogin, "totp_required", http.StatusUnauthorized, "需要 TOTP 验证码")
 		return
 	}
 
