@@ -135,6 +135,8 @@ func main() {
 	mux.HandleFunc("/api/fs/rename", p.handleFsRename)
 	mux.HandleFunc("/api/fs/remove", p.handleFsRemove)
 	mux.HandleFunc("/api/fs/restore", p.handleFsRestore)
+	mux.HandleFunc("/api/fs/upload", p.handleFsUpload)
+	mux.HandleFunc("/api/fs/download", p.handleFsDownload)
 	mux.HandleFunc("/", p.handleIndex)
 
 	srv := &http.Server{Addr: *addr, Handler: p.securityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}

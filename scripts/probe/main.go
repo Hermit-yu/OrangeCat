@@ -4,6 +4,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -144,6 +145,40 @@ func errText(err error) string {
 	return err.Error()
 }
 
+// probeFsTransfer uploads a scratch file and downloads it back, verifying the
+// round-trip content matches and never touches a production config or directory.
+func probeFsTransfer() (bool, string) {
+	dir := "/tmp/ocp-fs-transfer-probe"
+	_ = os.RemoveAll(dir)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return false, "mkdir probe dir: " + err.Error()
+	}
+	defer os.RemoveAll(dir)
+
+	content := "transfer-roundtrip\n"
+	ok, data := probeWithParams("fs.upload", map[string]any{
+		"path": dir, "name": "up.bin", "content": content,
+	})
+	if !ok || data == nil {
+		return false, "fs.upload failed"
+	}
+	target := filepath.Join(dir, "up.bin")
+	back, err := os.ReadFile(target)
+	if err != nil || string(back) != content {
+		return false, "uploaded content wrong: " + string(back) + " err=" + errText(err)
+	}
+	ok, dl := probeWithParams("fs.download", map[string]any{"path": target})
+	if !ok || dl == nil {
+		return false, "fs.download failed"
+	}
+	b64, _ := dl["content_b64"].(string)
+	decoded, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil || string(decoded) != content {
+		return false, "download content wrong: " + string(decoded) + " err=" + errText(err)
+	}
+	return true, ""
+}
+
 type req struct {
 	ID     string         `json:"id"`
 	Action string         `json:"action"`
@@ -214,6 +249,16 @@ func main() {
 	entry = map[string]any{"action": "fs.restore", "ok": mutOK}
 	if !mutOK {
 		entry["error"] = mutErr
+		failures++
+	}
+	line, _ = json.Marshal(entry)
+	fmt.Println(string(line))
+
+	// fs.upload / fs.download cycle.
+	upOK, upErr := probeFsTransfer()
+	entry = map[string]any{"action": "fs.download", "ok": upOK}
+	if !upOK {
+		entry["error"] = upErr
 		failures++
 	}
 	line, _ = json.Marshal(entry)

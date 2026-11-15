@@ -21,6 +21,7 @@ const (
 	TypeNginxAction     = "nginx_action"
 	TypeFsWrite         = "fs_write"
 	TypeFsMutate        = "fs_mutate"
+	TypeFsUpload        = "fs_upload"
 
 	OutcomeSuccess  = "success"
 	OutcomeRejected = "rejected"
@@ -61,6 +62,9 @@ const (
 	ReasonFsRestoreSent         = "fs_restore_sent"
 	ReasonFsRestoreFailed       = "fs_restore_failed"
 	ReasonFsRestoreRequestBad   = "fs_restore_request_invalid"
+	ReasonFsUploadSent          = "fs_upload_sent"
+	ReasonFsUploadFailed        = "fs_upload_failed"
+	ReasonFsUploadRequestBad    = "fs_upload_request_invalid"
 )
 
 var allowedReasons = map[string]struct{}{
@@ -77,6 +81,7 @@ var allowedReasons = map[string]struct{}{
 	ReasonFsRenameSent: {}, ReasonFsRenameFailed: {}, ReasonFsRenameRequestBad: {},
 	ReasonFsRemoveSent: {}, ReasonFsRemoveFailed: {}, ReasonFsRemoveRequestBad: {},
 	ReasonFsRestoreSent: {}, ReasonFsRestoreFailed: {}, ReasonFsRestoreRequestBad: {},
+	ReasonFsUploadSent: {}, ReasonFsUploadFailed: {}, ReasonFsUploadRequestBad: {},
 }
 
 // Event deliberately has no username, password, cookie, token, URL, or body fields.
@@ -157,7 +162,7 @@ func openLog(path string) (*os.File, error) {
 }
 
 func (w *Writer) Record(event Event) error {
-	if event.Type != TypeLogin && event.Type != TypeLogout && event.Type != TypeProcessKill && event.Type != TypeContainerAction && event.Type != TypeNginxAction && event.Type != TypeFsWrite && event.Type != TypeFsMutate {
+	if event.Type != TypeLogin && event.Type != TypeLogout && event.Type != TypeProcessKill && event.Type != TypeContainerAction && event.Type != TypeNginxAction && event.Type != TypeFsWrite && event.Type != TypeFsMutate && event.Type != TypeFsUpload {
 		return fmt.Errorf("invalid auth event type %q", event.Type)
 	}
 	if event.Outcome != OutcomeSuccess && event.Outcome != OutcomeRejected {

@@ -72,6 +72,8 @@ func NewRegistry() *Registry {
 	r.Register("fs.rename", FsRename)
 	r.Register("fs.remove", FsRemove)
 	r.Register("fs.restore", FsRestore)
+	r.Register("fs.upload", FsUpload)
+	r.Register("fs.download", FsDownload)
 	return r
 }
 
