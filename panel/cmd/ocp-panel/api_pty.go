@@ -29,6 +29,7 @@ func (p *panel) handlePTYOpen(w http.ResponseWriter, r *http.Request) {
 		Command string `json:"command"`
 		Rows    int    `json:"rows"`
 		Cols    int    `json:"cols"`
+		AgentID string `json:"agent_id"`
 	}
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10))
 	dec.DisallowUnknownFields()
@@ -39,6 +40,14 @@ func (p *panel) handlePTYOpen(w http.ResponseWriter, r *http.Request) {
 	in.Command = strings.TrimSpace(in.Command)
 	if in.Command == "" {
 		p.recordPTYRejected(w, r, authaudit.ReasonPTYOpenRequestBad, "命令必填")
+		return
+	}
+	// 目标节点选择（哪吒对接方案预留）：默认空 = 本机 agent。
+	// 当前为单机部署（panel 直连本机 agent），非空 agent_id 一律视为集群未就绪，
+	// 明确报错而非静默忽略——不编造多节点支持。
+	agentID := strings.TrimSpace(in.AgentID)
+	if agentID != "" && agentID != "local" && agentID != "local-agent" {
+		p.recordPTYRejected(w, r, authaudit.ReasonPTYOpenRequestBad, "集群未就绪：当前为单机部署，仅本机终端可用（agent_id 仅支持 local）")
 		return
 	}
 	params := map[string]any{"command": in.Command}
