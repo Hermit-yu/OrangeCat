@@ -25,6 +25,10 @@ func main() {
 	if os.Getenv("OCP_AGENT_PTY_ENABLED") == "1" {
 		actions.EnablePTY()
 	}
-	fmt.Printf("ocp-agent listening on %s, %d actions registered (pty=%v)\n", *sock, reg.Count(), actions.PTYEnabled())
+	// 切片 A：AI 助手能力默认关闭，只有 OCP_AGENT_AI_ENABLED=1 才开启（独立开关）。
+	if os.Getenv("OCP_AGENT_AI_ENABLED") == "1" {
+		actions.EnableAI()
+	}
+	fmt.Printf("ocp-agent listening on %s, %d actions registered (pty=%v, ai=%v)\n", *sock, reg.Count(), actions.PTYEnabled(), actions.AIEnabled())
 	select {}
 }

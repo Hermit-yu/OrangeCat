@@ -38,6 +38,7 @@ type panel struct {
 	trustedProxyIPs map[netip.Addr]struct{}
 	authAudit       interface{ Record(authaudit.Event) error }
 	now             func() time.Time // 可注入时钟，便于确定性验证限速窗口
+	aiEnabled       bool             // 切片 A：AI 助手能力是否启用（OCP_PANEL_AI_ENABLED=1）
 }
 
 func (p *panel) newClient() *agentbridge.Client { return p.clients }
@@ -74,7 +75,7 @@ func main() {
 			log.Printf("关闭认证审计失败: %v", err)
 		}
 	}()
-	p := &panel{sock: *sock, attempts: map[string]int{}, trustedProxyIPs: trustedProxyIPs, authAudit: auditWriter}
+	p := &panel{sock: *sock, attempts: map[string]int{}, trustedProxyIPs: trustedProxyIPs, authAudit: auditWriter, aiEnabled: os.Getenv("OCP_PANEL_AI_ENABLED") == "1"}
 	p.clients = agentbridge.New(*sock)
 
 	// 密码：存在则严格读取；仅确认为不存在时才生成，绝不覆盖坏权限/空文件/符号链接。
@@ -146,6 +147,9 @@ func main() {
 	mux.HandleFunc("/api/pty/close", p.handlePTYClose)
 	mux.HandleFunc("/api/pty/status", p.requireAuth(p.handlePTYStatus))
 	mux.HandleFunc("/api/pty/list", p.requireAuth(p.handlePTYList))
+	// 切片 A：AI 助手（写走三重门，读走 requireAuth）
+	mux.HandleFunc("/api/ai/chat", p.handleAIChat)
+	mux.HandleFunc("/api/ai/capability", p.requireAuth(p.handleAICapability))
 	mux.HandleFunc("/", p.handleIndex)
 
 	srv := &http.Server{Addr: *addr, Handler: p.securityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}

@@ -83,6 +83,8 @@ func NewRegistry() *Registry {
 	r.Register("pty.resize", ptyResize)
 	r.Register("pty.close", ptyClose)
 	r.Register("pty.list", ptyList)
+	r.Register("ai.chat", AIChat)
+	r.Register("ai.status", AIStatus)
 	return r
 }
 

@@ -217,6 +217,49 @@ section .panel-card{margin-bottom:22px}
 .service-item__state{font-size:12px;font-weight:600;color:var(--success);white-space:nowrap}
 .service-item__state.down{color:var(--danger)}
 
+/* ── AI 助手（切片 A） ── */
+.ai-wrap{display:grid;grid-template-columns:250px 1fr;gap:16px;min-height:560px}
+.ai-sessions{background:var(--surface-gradient);border:1px solid var(--border);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;gap:8px}
+.ai-sessions__head{font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.ai-session{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-raised);cursor:pointer;font-size:13px;color:var(--text);text-align:left;transition:all .12s;width:100%}
+.ai-session:hover{background:var(--interaction-hover-subtle);border-color:var(--border-strong)}
+.ai-session.active{background:var(--brand-soft);border-color:var(--brand);color:var(--brand-strong);font-weight:600}
+.ai-session .ai-session__dot{width:7px;height:7px;border-radius:50%;background:var(--success);flex-shrink:0}
+.ai-session__name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-chat{background:var(--surface-gradient);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;min-width:0}
+.ai-chat__head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)}
+.ai-chat__title{font-size:15px;font-weight:600;color:var(--text);flex:1}
+.ai-chat__conn{font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:5px}
+.ai-chat__conn .dot{width:7px;height:7px;border-radius:50%;background:var(--success)}
+.ai-chat__conn .dot.off{background:var(--danger)}
+.ai-msgs{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px;min-height:380px;max-height:520px}
+.ai-msg{display:flex;flex-direction:column;max-width:86%}
+.ai-msg.user{align-self:flex-end}
+.ai-msg.assistant{align-self:flex-start}
+.ai-msg__bubble{background:var(--surface-subtle);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;font-size:13.5px;line-height:1.6;color:var(--text);white-space:pre-wrap;word-break:break-word}
+.ai-msg.user .ai-msg__bubble{background:var(--brand-soft);border-color:var(--brand-muted);color:var(--brand-strong)}
+.ai-msg__meta{font-size:11px;color:var(--text-muted);margin-top:4px;padding:0 2px}
+.ai-composer{border-top:1px solid var(--border);padding:14px 18px;display:flex;flex-direction:column;gap:10px}
+.ai-composer__row{display:flex;gap:8px;align-items:flex-end}
+.ai-composer textarea{flex:1;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:9px 12px;font-size:13px;font-family:var(--font);resize:vertical;min-height:44px;max-height:140px;transition:border-color .12s}
+.ai-composer textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--interaction-hover)}
+.ai-composer__send{width:38px;height:38px;border-radius:var(--radius-sm);border:1px solid var(--border);background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff;cursor:pointer;font-size:15px;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-button);transition:filter .12s}
+.ai-composer__send:hover{filter:brightness(1.08)}
+.ai-composer__send:disabled{opacity:.5;cursor:not-allowed;filter:none}
+.ai-composer__tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ai-tool{font-size:11px;color:var(--text-muted);border:1px solid var(--border);background:var(--surface-raised);border-radius:999px;padding:3px 10px;cursor:pointer;transition:all .12s}
+.ai-tool:hover{color:var(--brand);border-color:var(--border-strong)}
+.ai-tool.active{background:var(--brand-soft);color:var(--brand-strong);border-color:var(--brand)}
+.ai-err{color:var(--danger);font-size:12px;padding:0 2px}
+.ai-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-muted);padding:40px}
+.ai-empty .ai-empty__icon{width:52px;height:52px;border-radius:14px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center}
+.ai-typing{display:inline-flex;gap:4px;align-items:center}
+.ai-typing span{width:6px;height:6px;border-radius:50%;background:var(--text-muted);animation:aiBlink 1.2s infinite}
+.ai-typing span:nth-child(2){animation-delay:.2s}
+.ai-typing span:nth-child(3){animation-delay:.4s}
+@keyframes aiBlink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+@media (max-width:960px){.ai-wrap{grid-template-columns:1fr}.ai-sessions{max-height:180px;overflow-y:auto}}
+
 /* ── 工具布局辅助 ── */
 .user-info{flex:1;min-width:0}
 .user-name{font-weight:600}
@@ -257,6 +300,7 @@ section .panel-card{margin-bottom:22px}
     <symbol id="i-health" viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"></path></symbol>
     <symbol id="i-diag" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"></circle></symbol>
     <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 6-8"></path><path d="M3 21h18"></path></symbol>
+    <symbol id="i-ai" viewBox="0 0 24 24"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"></path><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z"></path><path d="M5 15l.7 1.6L7.3 17l-1.6.7L5 19.3l-.7-1.6L2.7 17l1.6-.4z"></path></symbol>
   </defs>
 </svg>
 <!-- 登录视图 -->
@@ -299,6 +343,7 @@ section .panel-card{margin-bottom:22px}
       <button class="sidebar__link" data-target="secHealth"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-health"></use></svg></span>主机体检</button>
       <button class="sidebar__link" data-target="secDiag"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-diag"></use></svg></span>链路诊断</button>
       <button class="sidebar__link" data-target="secChart"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-chart"></use></svg></span>历史趋势</button>
+      <button class="sidebar__link" data-target="secAI"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-ai"></use></svg></span>AI 助手</button>
     </nav>
     <div class="sidebar__footer">
       <div class="sidebar__agent" id="agentStatusBox">
@@ -507,6 +552,41 @@ section .panel-card{margin-bottom:22px}
           <div class="panel-card chartcard">
             <svg id="chartRaw" width="100%" height="160" viewBox="0 0 900 160" preserveAspectRatio="none"></svg>
             <div id="chartInfo" class="dim padtop"></div>
+          </div>
+        </section>
+        <!-- AI 助手（切片 A：真实绑定 agnes 端点） -->
+        <section id="secAI" class="view hidden">
+          <div class="section-head">AI 助手（真实 LLM，非模拟）</div>
+          <div class="ai-wrap">
+            <div class="ai-sessions">
+              <div class="ai-sessions__head">会话</div>
+              <button class="ai-session active" id="aiSess1"><span class="ai-session__dot"></span><span class="ai-session__name">新会话</span></button>
+              <button class="ai-tool" id="aiNewChat">+ 新建会话</button>
+            </div>
+            <div class="ai-chat">
+              <header class="ai-chat__head">
+                <div class="ai-chat__title">AI 助手</div>
+                <div class="ai-chat__conn" id="aiConn"><span class="dot" id="aiConnDot"></span><span id="aiConnText">检查能力…</span></div>
+              </header>
+              <div class="ai-msgs" id="aiMsgs">
+                <div class="ai-empty">
+                  <div class="ai-empty__icon"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"></path><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z"></path></svg></div>
+                  <div>输入问题，AI 助手将基于真实模型回答</div>
+                  <div class="muted">会话仅保存在当前页面；刷新后重置</div>
+                </div>
+              </div>
+              <div class="ai-composer">
+                <div class="ai-err" id="aiErr"></div>
+                <div class="ai-composer__row">
+                  <textarea id="aiInput" placeholder="输入你的问题…（Enter 发送，Shift+Enter 换行）" rows="2"></textarea>
+                  <button class="ai-composer__send" id="aiSend" title="发送">➤</button>
+                </div>
+                <div class="ai-composer__tools">
+                  <button class="ai-tool" id="aiModelTag" title="当前模型">agnes-3.0-flash</button>
+                  <span class="muted">能力默认关闭（agent 需启用）</span>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </div>
@@ -958,6 +1038,66 @@ document.getElementById("btnDiag").addEventListener("click",async()=>{const tb=d
 async function loadChart(){const now=Math.floor(Date.now()/1000);const from=now-3600;const r=await fetch(APP_BASE+"/api/history?level=raw&from="+from+"&to="+now,{credentials:"same-origin"});const d=await r.json();const svg=document.getElementById("chartRaw");if(d.error){chartInfo.textContent="历史数据暂不可用："+d.error;return}const s=(d.samples||[]).map(p=>({cpu:p.CPU!==undefined?p.CPU:p.cpu,mem:p.Mem!==undefined?p.Mem:p.mem,ts:p.Ts!==undefined?p.Ts:p.ts}));if(!s.length){chartInfo.textContent="最近 1 小时尚无采样数据（采样器未运行或刚启动）";return}const W=900,H=160,pad=6;const x=(i)=>pad+(W-2*pad)*i/(Math.max(1,s.length-1));const y=(v)=>H-pad-(H-2*pad)*Math.min(100,Math.max(0,v))/100;const path=(k)=>s.map((p,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(p[k]).toFixed(1)).join(" ");svg.innerHTML=`<path d="${path("cpu")}" fill="none" stroke="var(--brand)" stroke-width="1.6"/><path d="${path("mem")}" fill="none" stroke="var(--success)" stroke-width="1.6"/><text x="${pad}" y="14" fill="#685f52" font-size="10">CPU</text><text x="${pad+34}" y="14" fill="#236e47" font-size="10">内存</text>`;chartInfo.textContent=`${s.length} 个采样 · 最近 ${Math.round((s[s.length-1].ts-s[0].ts)/60)} 分钟 · CPU 峰值 ${Math.max(...s.map(p=>p.cpu)).toFixed(1)}% · 内存峰值 ${Math.max(...s.map(p=>p.mem)).toFixed(1)}%`;chartInfo.dataset.loaded="1";}
 document.getElementById("btnRefresh").addEventListener("click",()=>refresh().catch(()=>{}));
 const bmr=document.getElementById("btnMonitorRefresh");if(bmr)bmr.addEventListener("click",()=>refresh().catch(()=>{}));
+// ── AI 助手（切片 A：真实绑定 agnes 端点） ──
+let aiEnabled=false,aiSending=false;
+const aiMessages=[]; // {role, content}
+function aiConnSet(on,text){const d=document.getElementById("aiConn");const t=document.getElementById("aiConnText");const dot=document.getElementById("aiConnDot");if(dot)dot.className="dot"+(on?"":" off");if(t)t.textContent=text}
+function aiAppendMsg(role,content){
+  const box=document.getElementById("aiMsgs");
+  if(!box)return;
+  // 清空 empty 态
+  const empty=box.querySelector(".ai-empty");if(empty)empty.remove();
+  const msg=document.createElement("div");
+  msg.className="ai-msg "+(role==="user"?"user":"assistant");
+  const meta=role==="user"?"你":(new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}));
+  msg.innerHTML=`<div class="ai-msg__bubble">${esc(content)}</div><div class="ai-msg__meta">${esc(meta)}</div>`;
+  box.appendChild(msg);
+  box.scrollTop=box.scrollHeight;
+  return msg;
+}
+function aiTyping(on){
+  const box=document.getElementById("aiMsgs");if(!box)return;
+  const old=box.querySelector(".ai-typing");if(old)old.remove();
+  if(on){const t=document.createElement("div");t.className="ai-typing";t.innerHTML="<span></span><span></span><span></span>";const wrap=document.createElement("div");wrap.className="ai-msg assistant";wrap.appendChild(t);box.appendChild(wrap);box.scrollTop=box.scrollHeight;}
+}
+async function aiSend(){
+  if(aiSending)return;
+  const inp=document.getElementById("aiInput");
+  const text=inp.value.trim();
+  if(!text){return}
+  if(!aiEnabled){document.getElementById("aiErr").textContent="AI 能力未启用：需 agent 设置 OCP_AGENT_AI_ENABLED=1 并配置 key（安全基线默认关闭）。";return}
+  aiSending=true;
+  const send=document.getElementById("aiSend");if(send)send.disabled=true;
+  document.getElementById("aiErr").textContent="";
+  inp.value="";
+  aiAppendMsg("user",text);
+  aiMessages.push({role:"user",content:text});
+  aiTyping(true);
+  try{
+    const csrf=csrfCookie();
+    // 只传最近 20 条历史（agent 侧也会强制上限）
+    const hist=aiMessages.slice(-20).filter(m=>m.role!=="user"||m.content!==text);
+    const r=await fetch(APP_BASE+"/api/ai/chat",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrf},body:JSON.stringify({message:text,history:hist})});
+    const j=await readJSONSafe(r);
+    if(!j.ok){document.getElementById("aiErr").textContent="请求失败："+((j.data&&j.data.agent_error)||j.text||("HTTP "+r.status));aiTyping(false);return}
+    const reply=(j.data.result&&j.data.result.reply)||"";
+    if(reply){aiAppendMsg("assistant",reply);aiMessages.push({role:"assistant",content:reply});}
+    else document.getElementById("aiErr").textContent="AI 返回了空内容";
+  }catch(e){document.getElementById("aiErr").textContent="请求失败："+e}
+  finally{aiTyping(false);aiSending=false;const s=document.getElementById("aiSend");if(s)s.disabled=false;}
+}
+async function aiInit(){
+  try{
+    const r=await fetch(APP_BASE+"/api/ai/capability",{credentials:"same-origin"});
+    const j=await r.json();
+    aiEnabled=!!j.enabled;
+    aiConnSet(aiEnabled,aiEnabled?"已启用（真实模型）":"能力关闭（agent 需启用）");
+  }catch(e){aiConnSet(false,"能力查询失败")}
+}
+document.getElementById("aiSend").addEventListener("click",aiSend);
+document.getElementById("aiInput").addEventListener("keydown",(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();aiSend();}});
+document.getElementById("aiNewChat").addEventListener("click",()=>{aiMessages.length=0;const box=document.getElementById("aiMsgs");if(box)box.innerHTML='<div class="ai-empty"><div class="ai-empty__icon"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"></path><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z"></path></svg></div><div>输入问题，AI 助手将基于真实模型回答</div><div class="muted">会话仅保存在当前页面；刷新后重置</div></div>';});
+aiInit();
 (async()=>{const r=await fetch(APP_BASE+"/api/overview",{credentials:"same-origin"});if(r.status===401)return;refresh().catch(()=>{});setInterval(()=>refresh().catch(()=>{}),5000)})();
 </script>
 </body>

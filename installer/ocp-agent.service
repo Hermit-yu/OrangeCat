@@ -8,6 +8,10 @@ Type=simple
 ExecStart=/opt/OrangeCatPanel/bin/ocp-agent --sock /run/ocp/agent.sock --audit /var/log/ocp/agent-audit.jsonl
 # P5：终端能力默认关闭；OCP_AGENT_PTY_ENABLED=1 才启用受控终端。
 Environment=OCP_AGENT_PTY_ENABLED=0
+# 切片 A：AI 助手能力默认关闭；OCP_AGENT_AI_ENABLED=1 才启用（独立开关）。
+# key/base_url/model 从 EnvironmentFile 注入，不写死在本文件。
+Environment=OCP_AGENT_AI_ENABLED=0
+EnvironmentFile=-/etc/ocp/agent-ai.env
 Restart=on-failure
 RestartSec=3
 RuntimeDirectory=ocp

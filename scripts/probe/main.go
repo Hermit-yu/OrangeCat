@@ -261,6 +261,27 @@ func probePTY() (bool, string) {
 	return true, ""
 }
 
+// probeAI verifies the AI capability surface. AI is OFF by default (master
+// switch); in that state ai.chat must fail with a "disabled" error, which is a
+// valid outcome (capability not enabled), not a probe failure. When the switch
+// is on and a key is present, it sends a short real message and expects a
+// non-empty reply from the configured endpoint.
+func probeAI() (bool, string) {
+	ok, data := probeWithParams("ai.chat", map[string]any{"message": "ping"})
+	if !ok {
+		// AI off (default) or key missing: both are expected non-failures.
+		return true, "ai disabled or no key (default)"
+	}
+	if data == nil {
+		return false, "ai.chat returned no data"
+	}
+	reply, _ := data["reply"].(string)
+	if reply == "" {
+		return false, "ai.chat returned empty reply"
+	}
+	return true, ""
+}
+
 type req struct {
 	ID     string         `json:"id"`
 	Action string         `json:"action"`
@@ -361,6 +382,16 @@ func main() {
 	entry = map[string]any{"action": "pty.list", "ok": ptyOK}
 	if !ptyOK {
 		entry["error"] = ptyErr
+		failures++
+	}
+	line, _ = json.Marshal(entry)
+	fmt.Println(string(line))
+
+	// AI capability surface (disabled by default -> expected not-failure).
+	aiOK, aiErr := probeAI()
+	entry = map[string]any{"action": "ai.chat", "ok": aiOK}
+	if !aiOK {
+		entry["error"] = aiErr
 		failures++
 	}
 	line, _ = json.Marshal(entry)
