@@ -69,6 +69,9 @@ func NewRegistry() *Registry {
 	r.Register("fs.stat", FsStat)
 	r.Register("fs.write", FsWrite)
 	r.Register("fs.write.rollback", FsWriteRollback)
+	r.Register("fs.rename", FsRename)
+	r.Register("fs.remove", FsRemove)
+	r.Register("fs.restore", FsRestore)
 	return r
 }
 

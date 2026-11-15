@@ -132,6 +132,9 @@ func main() {
 	mux.HandleFunc("/api/fs/stat", p.requireAuth(p.handleFsStat))
 	mux.HandleFunc("/api/fs/write", p.handleFsWrite)
 	mux.HandleFunc("/api/fs/write/rollback", p.handleFsWriteRollback)
+	mux.HandleFunc("/api/fs/rename", p.handleFsRename)
+	mux.HandleFunc("/api/fs/remove", p.handleFsRemove)
+	mux.HandleFunc("/api/fs/restore", p.handleFsRestore)
 	mux.HandleFunc("/", p.handleIndex)
 
 	srv := &http.Server{Addr: *addr, Handler: p.securityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}

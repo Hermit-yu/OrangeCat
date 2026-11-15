@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -214,9 +215,18 @@ func writeAtomicReplace(path string, data []byte) error {
 	}
 	tmpName := tmp.Name()
 	cleanup := func() { _ = tmp.Close(); _ = os.Remove(tmpName) }
-	if err := tmp.Chmod(0600); err != nil {
-		cleanup()
-		return fmt.Errorf("chmod temp: %w", err)
+	// Preserve the original file's permission bits and owner across the replace.
+	// The temp starts 0600 (safe default); chmod it to the target's mode and
+	// chown to its uid/gid so the atomic rename does not silently change either.
+	if info, statErr := os.Stat(path); statErr == nil {
+		if chmodErr := tmp.Chmod(info.Mode().Perm()); chmodErr != nil {
+			cleanup()
+			return fmt.Errorf("chmod temp: %w", chmodErr)
+		}
+		if chownErr := tmp.Chown(int(info.Sys().(*syscall.Stat_t).Uid), int(info.Sys().(*syscall.Stat_t).Gid)); chownErr != nil {
+			cleanup()
+			return fmt.Errorf("chown temp: %w", chownErr)
+		}
 	}
 	if _, err := tmp.Write(data); err != nil {
 		cleanup()

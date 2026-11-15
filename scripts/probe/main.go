@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -56,8 +57,54 @@ var actionParams = map[string]map[string]any{
 // never touches a production config file.
 const fsWriteProbeTarget = "/tmp/ocp-fs-write-probe.txt"
 
-// probeFsWrite exercises fs.write and fs.write.rollback against a private
-// scratch file, then verifies the original content came back.
+// probeFsMutate exercises fs.rename / fs.remove / fs.restore against private
+// scratch files, verifying each real state transition, and never touches a
+// production config or directory.
+func probeFsMutate() (bool, string) {
+	dir := "/tmp/ocp-fs-mutate-probe"
+	_ = os.RemoveAll(dir)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return false, "mkdir probe dir: " + err.Error()
+	}
+	defer os.RemoveAll(dir)
+
+	seed := filepath.Join(dir, "seed.txt")
+	if err := os.WriteFile(seed, []byte("seed-data\n"), 0644); err != nil {
+		return false, "seed: " + err.Error()
+	}
+	// rename
+	renamed := filepath.Join(dir, "renamed.txt")
+	ok, _ := probeWithParams("fs.rename", map[string]any{"path": seed, "new_path": renamed})
+	if !ok {
+		return false, "fs.rename failed"
+	}
+	if _, err := os.Stat(renamed); err != nil {
+		return false, "rename target missing: " + err.Error()
+	}
+	// remove
+	ok, data := probeWithParams("fs.remove", map[string]any{"path": renamed, "force": true})
+	if !ok || data == nil {
+		return false, "fs.remove failed"
+	}
+	if _, err := os.Stat(renamed); !os.IsNotExist(err) {
+		return false, "removed target still exists"
+	}
+	snap, _ := data["snapshot"].(string)
+	if snap == "" {
+		return false, "remove snapshot missing"
+	}
+	// restore
+	ok, _ = probeWithParams("fs.restore", map[string]any{"path": renamed, "snapshot": snap})
+	if !ok {
+		return false, "fs.restore failed"
+	}
+	back, err := os.ReadFile(renamed)
+	if err != nil || string(back) != "seed-data\n" {
+		return false, "restored content wrong: " + string(back) + " err=" + errText(err)
+	}
+	return true, ""
+}
+
 func probeFsWrite() (bool, string) {
 	orig := "ocp-probe-original\n"
 	mod := "ocp-probe-modified\n"
@@ -160,6 +207,16 @@ func main() {
 		failures++
 	}
 	line, _ := json.Marshal(entry)
+	fmt.Println(string(line))
+
+	// fs.rename / fs.remove / fs.restore cycle.
+	mutOK, mutErr := probeFsMutate()
+	entry = map[string]any{"action": "fs.restore", "ok": mutOK}
+	if !mutOK {
+		entry["error"] = mutErr
+		failures++
+	}
+	line, _ = json.Marshal(entry)
 	fmt.Println(string(line))
 
 	for _, action := range actions {

@@ -20,6 +20,7 @@ const (
 	TypeContainerAction = "container_action"
 	TypeNginxAction     = "nginx_action"
 	TypeFsWrite         = "fs_write"
+	TypeFsMutate        = "fs_mutate"
 
 	OutcomeSuccess  = "success"
 	OutcomeRejected = "rejected"
@@ -51,6 +52,15 @@ const (
 	ReasonFsRollbackSent        = "fs_rollback_sent"
 	ReasonFsRollbackFailed      = "fs_rollback_failed"
 	ReasonFsRollbackRequestBad  = "fs_rollback_request_invalid"
+	ReasonFsRenameSent          = "fs_rename_sent"
+	ReasonFsRenameFailed        = "fs_rename_failed"
+	ReasonFsRenameRequestBad    = "fs_rename_request_invalid"
+	ReasonFsRemoveSent          = "fs_remove_sent"
+	ReasonFsRemoveFailed        = "fs_remove_failed"
+	ReasonFsRemoveRequestBad    = "fs_remove_request_invalid"
+	ReasonFsRestoreSent         = "fs_restore_sent"
+	ReasonFsRestoreFailed       = "fs_restore_failed"
+	ReasonFsRestoreRequestBad   = "fs_restore_request_invalid"
 )
 
 var allowedReasons = map[string]struct{}{
@@ -64,6 +74,9 @@ var allowedReasons = map[string]struct{}{
 	ReasonNginxActionSent: {}, ReasonNginxActionFailed: {}, ReasonNginxRequestBad: {},
 	ReasonFsWriteSent: {}, ReasonFsWriteFailed: {}, ReasonFsWriteRequestBad: {},
 	ReasonFsRollbackSent: {}, ReasonFsRollbackFailed: {}, ReasonFsRollbackRequestBad: {},
+	ReasonFsRenameSent: {}, ReasonFsRenameFailed: {}, ReasonFsRenameRequestBad: {},
+	ReasonFsRemoveSent: {}, ReasonFsRemoveFailed: {}, ReasonFsRemoveRequestBad: {},
+	ReasonFsRestoreSent: {}, ReasonFsRestoreFailed: {}, ReasonFsRestoreRequestBad: {},
 }
 
 // Event deliberately has no username, password, cookie, token, URL, or body fields.
@@ -144,7 +157,7 @@ func openLog(path string) (*os.File, error) {
 }
 
 func (w *Writer) Record(event Event) error {
-	if event.Type != TypeLogin && event.Type != TypeLogout && event.Type != TypeProcessKill && event.Type != TypeContainerAction && event.Type != TypeNginxAction && event.Type != TypeFsWrite {
+	if event.Type != TypeLogin && event.Type != TypeLogout && event.Type != TypeProcessKill && event.Type != TypeContainerAction && event.Type != TypeNginxAction && event.Type != TypeFsWrite && event.Type != TypeFsMutate {
 		return fmt.Errorf("invalid auth event type %q", event.Type)
 	}
 	if event.Outcome != OutcomeSuccess && event.Outcome != OutcomeRejected {
