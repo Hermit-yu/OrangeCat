@@ -1,1 +1,6 @@
+# 构建产物：二进制不进版本库，由 installer 在各机现场编译（go build）。
+bin/ocp-agent
+bin/ocp-panel
+bin/ocp-sampler
+# 部署回滚用的临时备份
 bin/*.bak-*
