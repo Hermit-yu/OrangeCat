@@ -128,6 +128,8 @@ body{background:var(--page-ambient);color:var(--text);font:14px/1.55 var(--font)
 .ocp-desktop{display:none;position:fixed;inset:var(--topbar-height) 0 0 0;background:var(--surface2);overflow:hidden}
 body.mode-desktop .ocp-desktop{display:block}
 body.mode-desktop .app-shell{display:none}
+body.has-bg{background-image:var(--bg-image);background-size:cover;background-position:center;background-attachment:fixed}
+body.has-bg .app-shell{background:var(--surface);border-radius:8px}
 .desktop-window{position:absolute;min-width:360px;min-height:220px;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden}
 .desktop-window__title{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:var(--surface2);border-bottom:1px solid var(--border);cursor:grab;font-size:12px;color:var(--text);user-select:none}
 .desktop-window__title:active{cursor:grabbing}
@@ -872,6 +874,15 @@ section .panel-card{margin-bottom:22px}
                 <button id="btnThemeDark" class="logout-button">深色</button>
                 <button id="btnThemeLight" class="logout-button muted">浅色</button>
                 <div class="dim padtop-sm">主题偏好保存在本机浏览器（localStorage），刷新后保持。</div>
+              </div>
+            </div>
+            <div class="panel-card">
+              <div class="card-title">自定义背景</div>
+              <div class="padtop">
+                <input type="file" id="bgUpload" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden">
+                <button id="btnBgPick" class="logout-button">选择背景图片</button>
+                <button id="btnBgClear" class="logout-button muted">清除背景</button>
+                <div class="dim padtop-sm" id="bgMsg">背景仅存本机浏览器；MIME 白名单 + 大小 ≤2MiB 校验，恶意文件拒绝。</div>
               </div>
             </div>
             <div class="panel-card">
@@ -1866,6 +1877,35 @@ function ocpRenderTaskbar(){
 }
 document.getElementById("btnMode").addEventListener("click",()=>{ocpMode=ocpMode==="desktop"?"classic":"desktop";ocpApplyMode()});
 ocpApplyMode();
+// ── P12：自定义背景（MIME 白名单 + 大小校验，localStorage，恶意拒绝） ──
+const BG_MAX=2*1024*1024;
+const BG_MIMES=["image/png","image/jpeg","image/webp","image/gif"];
+function ocpApplyBg(){
+  try{const bg=localStorage.getItem("ocpBg");if(bg){document.documentElement.style.setProperty("--bg-image",`url(${bg})`);document.body.classList.add("has-bg")}else{document.body.classList.remove("has-bg")}}catch{}
+}
+(function(){try{const t=localStorage.getItem("ocpBg");if(t)ocpApplyBg()}catch{}})();
+document.getElementById("btnBgPick").addEventListener("click",()=>{const i=document.getElementById("bgUpload");if(i)i.click()});
+document.getElementById("bgUpload").addEventListener("change",(e)=>{
+  const f=e.target.files&&e.target.files[0];
+  const msg=document.getElementById("bgMsg");
+  if(!f){return}
+  if(!BG_MIMES.includes(f.type)){if(msg)msg.textContent="拒绝：仅支持 PNG/JPEG/WebP/GIF";e.target.value="";return}
+  if(f.size>BG_MAX){if(msg)msg.textContent="拒绝：图片超过 2MiB 上限";e.target.value="";return}
+  const rd=new FileReader();
+  rd.onload=()=>{
+    const url=String(rd.result);
+    if(!url.startsWith("data:image/")){if(msg)msg.textContent="拒绝：非法图片数据";e.target.value="";return}
+    try{localStorage.setItem("ocpBg",url)}catch{if(msg)msg.textContent="拒绝：图片过大无法存储";e.target.value="";return}
+    ocpApplyBg();
+    if(msg)msg.textContent="背景已应用（本地保存）";
+  };
+  rd.readAsDataURL(f);
+});
+document.getElementById("btnBgClear").addEventListener("click",()=>{
+  try{localStorage.removeItem("ocpBg")}catch{}
+  ocpApplyBg();
+  const msg=document.getElementById("bgMsg");if(msg)msg.textContent="背景已清除";
+});
 (async()=>{const r=await fetch(APP_BASE+"/api/overview",{credentials:"same-origin"});if(r.status===401)return;refresh().catch(()=>{});setInterval(()=>refresh().catch(()=>{}),5000)})();</script>
 </body>
 </html>
