@@ -55,7 +55,8 @@ func resetTaskRegistry() {
 // TaskStart starts an asynchronous hostdiag task and returns its id.
 func TaskStart(ctx context.Context, params map[string]any) (map[string]any, error) {
 	typ, _ := params["type"].(string)
-	if typ != "hostdiag" {
+	// P11：应用安装/卸载作为后台任务（compose up/down 可超网关 60s）
+	if typ != "hostdiag" && typ != "app_install" && typ != "app_uninstall" {
 		return nil, fmt.Errorf("unknown task type %q", typ)
 	}
 	globalTasks.mu.Lock()
@@ -79,7 +80,20 @@ func TaskStart(ctx context.Context, params map[string]any) (map[string]any, erro
 			}
 		}()
 		t.appendLog("start " + typ)
-		res, err := runHostdiag(ctx, t)
+		var res map[string]any
+		var err error
+		// 后台任务用独立 ctx（不继承请求 ctx——请求返回即取消会中断长任务）
+		bc := context.Background()
+		switch typ {
+		case "hostdiag":
+			res, err = runHostdiag(bc, t)
+		case "app_install":
+			name, _ := params["name"].(string)
+			res, err = AppsInstall(bc, map[string]any{"name": name})
+		case "app_uninstall":
+			name, _ := params["name"].(string)
+			res, err = AppsUninstall(bc, map[string]any{"name": name})
+		}
 		t.mu.Lock()
 		defer t.mu.Unlock()
 		t.Finished = time.Now()

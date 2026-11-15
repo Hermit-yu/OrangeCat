@@ -59,6 +59,10 @@ func NewRegistry() *Registry {
 	r.Register("compose.projects", noParams(ComposeProjects))
 	r.Register("compose.validate", ComposeValidate)
 	r.Register("compose.status", noParams(ComposeStatus))
+	// P11：应用目录与生态适配
+	r.Register("apps.catalog", noParams(AppsCatalog))
+	r.Register("apps.install", AppsInstall)
+	r.Register("apps.uninstall", AppsUninstall)
 	r.Register("nginx.sites", noParams(NginxSites))
 	r.Register("nginx.sites.full", noParams(NginxSitesP3))
 	r.Register("nginx.test", NginxTest)

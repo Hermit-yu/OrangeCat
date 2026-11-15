@@ -143,6 +143,10 @@ func main() {
 	mux.HandleFunc("/api/totp/setup", p.handleTOTPSetup)
 	mux.HandleFunc("/api/totp/enable", p.handleTOTPEnable)
 	mux.HandleFunc("/api/totp/disable", p.handleTOTPDisable)
+	// P11：应用目录与生态（catalog 只读；install/uninstall 写门+审计）
+	mux.HandleFunc("/api/apps/catalog", p.requireAuth(p.handleAppsCatalog))
+	mux.HandleFunc("/api/apps/install", p.handleAppsInstall)
+	mux.HandleFunc("/api/apps/uninstall", p.handleAppsUninstall)
 	mux.HandleFunc("/api/password", p.requireAuth(p.handleChangePassword))
 	mux.HandleFunc("/api/processes/kill", p.handleProcessKill)
 	mux.HandleFunc("/api/history", p.requireAuth(p.handleHistory))
