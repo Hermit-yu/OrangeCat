@@ -58,6 +58,10 @@ body{background:var(--page-ambient);color:var(--text);font:14px/1.55 var(--font)
 /* ── 受控终端（P5） ── */
 .termbox{border:1px solid var(--border);border-radius:10px;background:#12100e;padding:0;overflow:hidden;display:flex;flex-direction:column;min-height:380px}
 .termout{font-family:var(--font-mono);font-size:13px;color:#e4e1dd;background:#12100e;padding:12px 14px;flex:1;overflow-y:auto;white-space:pre-wrap;word-break:break-all;min-height:320px}
+.termout .ansi-b{font-weight:bold}
+.termout .ansi-31{color:#e5734a}.termout .ansi-32{color:#9ccc65}.termout .ansi-33{color:#c7d17a}.termout .ansi-34{color:#4fc3f7}.termout .ansi-35{color:#b39ddb}.termout .ansi-36{color:#26c6da}.termout .ansi-37{color:#e0e0e0}
+.termout .ansi-91{color:#ff8a65}.termout .ansi-92{color:#aed581}.termout .ansi-93{color:#dce775}.termout .ansi-94{color:#80d8ff}.termout .ansi-95{color:#ce93d8}.termout .ansi-96{color:#80deea}.termout .ansi-97{color:#fff}
+.termout .ansi-41{background:#5c1f10}.termout .ansi-42{background:#274a1c}.termout .ansi-43{background:#3f451c}.termout .ansi-44{background:#123a4a}.termout .ansi-45{background:#2d1f4a}.termout .ansi-46{background:#0e4a4a}.termout .ansi-47{background:#3f3f3f}
 .term-inline{display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid #2a2723;background:#181614}
 .term-prompt{color:#a28227;font-family:var(--font-mono);font-size:13px;font-weight:600}
 .terminput{flex:1;background:transparent;border:none;outline:none;color:#e4e1dd;font-family:var(--font-mono);font-size:13px}
@@ -1667,7 +1671,7 @@ function termRenderGrid(){
   </div>`).join("");
   // 回填已有输出缓冲到重建后的窗格（grid.innerHTML 重建会丢旧 DOM 的文本）
   __termPanes.panes.forEach((p,i)=>{
-    if(p&&p.buf){const o=termPaneOut(i);if(o){o.textContent=p.buf;o.scrollTop=o.scrollHeight}}
+    if(p&&p.buf){const o=termPaneOut(i);if(o){o.innerHTML=ansiToHtml(p.buf);o.scrollTop=o.scrollHeight}}
   });
   grid.querySelectorAll(".term-pane").forEach(p=>{
     p.addEventListener("click",()=>{__termPanes.active=Number(p.dataset.pane);termRenderGrid();termSyncInput()});
@@ -1704,6 +1708,49 @@ async function termPaneOpen(i){
   }catch(e){const el=termPaneErr(i);if(el)el.textContent="请求失败："+e;p.opening=false}
 }
 // 轮询窗格 i 输出
+// ANSI 转义序列 → HTML（终端显示不裸漏控制码）
+// 支持：SGR 颜色(0/1/30-37/90-97/40-47/100-107)、清屏(2J/3J)、光标归位(H)、
+// 括号粘贴模式(?2004h/l 丢弃)、其他 \x1b[...m 丢弃。其余控制字符剥除。
+function ansiToHtml(s){
+  if(!s)return "";
+  let out="",cur="";
+  const escHtml=x=>x.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  // 先剥 OSC 窗口标题序列 \x1b]0;...(\x07|\x1b\\)（xterm 标题/图标）
+  s=s.replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g,"");
+  const re=/\x1b\[([0-9;?]*)([A-Za-z])/g;
+  let last=0,m;
+  while((m=re.exec(s))!==null){
+    out+=escHtml(s.slice(last,m.index));
+    const code=m[1],cmd=m[2];
+    if(cmd==="m"){ // SGR
+      const seq=code?code.split(";"):[];
+      const cls=[];
+      for(let i=0;i<seq.length;i++){
+        const n=Number(seq[i]);
+        if(seq[i]===""){cls.push("")}
+        else if(n===0)cls.push("");
+        else if(n===1)cls.push("ansi-b");
+        else if(n>=30&&n<=37)cls.push("ansi-"+n);
+        else if(n>=90&&n<=97)cls.push("ansi-"+n);
+        else if(n>=40&&n<=47)cls.push("ansi-"+n);
+        else if(n>=100&&n<=107)cls.push("ansi-"+(n-60));
+      }
+      const c=cls.filter(x=>x).join(" ");
+      if(c){if(cur)out+="</span>";cur=c;out+='<span class="'+cur+'">';}
+      else if(cur){out+="</span>";cur=""}
+    } else if(cmd==="J"||cmd==="K"||cmd==="H"||cmd==="A"||cmd==="B"||cmd==="C"||cmd==="D"||cmd==="h"||cmd==="l"||cmd==="r"){
+      if(cur){out+="</span>";cur=""}
+    } else {
+      if(cur){out+="</span>";cur=""}
+    }
+    last=m.index+m[0].length;
+  }
+  out+=escHtml(s.slice(last));
+  if(cur)out+="</span>";
+  // 剥除残留 C0 控制字符（换行/回车/制表除外）
+  out=out.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,"");
+  return out;
+}
 async function termPanePoll(i){
   const p=__termPanes.panes[i];if(!p||!p.sessionId)return;
   try{
@@ -1711,7 +1758,7 @@ async function termPanePoll(i){
     const j=await readJSONSafe(r);
     if(!j.ok){const el=termPaneErr(i);if(el)el.textContent="轮询失败";return}
     const res=j.data.result;
-    if(res.chunk){p.buf+=res.chunk;if(p.buf.length>50000)p.buf=p.buf.slice(-50000);const o=termPaneOut(i);if(o){o.textContent=p.buf;o.scrollTop=o.scrollHeight}}
+    if(res.chunk){p.buf+=res.chunk;if(p.buf.length>50000)p.buf=p.buf.slice(-50000);const o=termPaneOut(i);if(o){o.innerHTML=ansiToHtml(p.buf);o.scrollTop=o.scrollHeight}}
     p.offset=res.offset||0;
     if(res.state==="exited"){p.state="exited";if(p.timer){clearInterval(p.timer);p.timer=null}const lab=termPaneLabel(i);if(lab)lab.textContent=lab.textContent.replace(/\s*·.*$/,"")+" · 已退出(exit "+(res.exit_code??"?")+")";}
   }catch(e){}
@@ -1723,7 +1770,7 @@ async function termInput(e){
     if(!p||!p.sessionId){const ti=document.getElementById("termIn");if(ti){ti.disabled=true}return}
     const ti=document.getElementById("termIn");const v=ti.value;ti.value="";
     if(!p.buf)p.buf="";
-    p.buf+=v+"\n";const o=termPaneOut(__termPanes.active);if(o){o.textContent=p.buf;o.scrollTop=o.scrollHeight}
+    p.buf+=v+"\n";const o=termPaneOut(__termPanes.active);if(o){o.innerHTML=ansiToHtml(p.buf);o.scrollTop=o.scrollHeight}
     try{
       const csrf=csrfCookie();
       const r=await fetch(APP_BASE+"/api/pty/input",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrf},body:JSON.stringify({session_id:p.sessionId,data:v+"\n"})});
