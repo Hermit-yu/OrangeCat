@@ -534,6 +534,8 @@ func Processes(ctx context.Context, p map[string]any) (map[string]any, error) {
 	// 运行实体数：/proc/loadavg 第 4 字段第一段（内核权威瞬时值，含内核线程）。
 	// 全系统扫描时 R 进程是毫秒级状态，扫描耗时>10ms 必然漏掉大部分，
 	// 用 loadavg 的运行实体计数更可靠（不恒 0）。
+	// 但 loadavg 的运行实体 = R + D（不可中断睡眠），演示站/用户期望纯 R。
+	// 纯 R 用 ps -eo stat 权威计数（一次 exec），R+D 保留 loadavg 兼容。
 	if lb, err := os.ReadFile("/proc/loadavg"); err == nil {
 		fields := strings.Fields(string(lb))
 		if len(fields) >= 4 {
@@ -544,7 +546,18 @@ func Processes(ctx context.Context, p map[string]any) (map[string]any, error) {
 			}
 		}
 	}
-	return map[string]any{"processes": out, "total_processes": totalProcs, "running_processes": runningProcs}, nil
+	// 纯 R 状态（用户态，权威）：ps -eo stat 一次计数。失败则回退扫描计数。
+	runningPure := runningProcs
+	if out, err := exec.Command("ps", "-eo", "stat=").Output(); err == nil {
+		n := 0
+		for _, line := range strings.Split(string(out), "\n") {
+			if strings.HasPrefix(line, "R") {
+				n++
+			}
+		}
+		runningPure = n
+	}
+	return map[string]any{"processes": out, "total_processes": totalProcs, "running_processes": runningProcs, "running_pure": runningPure}, nil
 }
 
 // numCPUs returns the number of online CPUs (from /proc/stat cpuN lines), min 1.

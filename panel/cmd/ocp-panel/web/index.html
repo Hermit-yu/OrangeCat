@@ -1279,7 +1279,7 @@ async function refresh(){
   const cpuAvg=ps.length?(ps.reduce((a,p)=>a+(Number(p.cpu_pct)||0),0)/ps.length):0;
   const setNum=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};
   setNum("procCount",String(pmeta.total_processes??ps.length));
-  setNum("procRunning",String(pmeta.running_processes??ps.filter(p=>p.state==="R").length));
+  setNum("procRunning",String(pmeta.running_pure??pmeta.running_processes??ps.filter(p=>p.state==="R").length));
   setNum("procMemTot",memTot.toFixed(0)+" MB");setNum("procCpuAvg",cpuAvg.toFixed(1)+"%");
   const stCls=s=>s==="R"?"sterr":(s==="S"?"stok":"dim");
   ptb.innerHTML=shown.map(p=>`<tr><td>${esc(p.pid)}</td><td>${esc(p.name)}</td><td class="${stCls(p.state)}">${esc(p.state||"")}</td><td>${esc(p.cpu_pct??"")}</td><td>${esc(p.uid)}</td><td>${esc(p.rss_mb)}</td><td><button class="logout-button killbtn muted" data-pid="${esc(p.pid)}" data-name="${esc(p.name)}" data-st="${esc(p.start_time||"")}">结束</button></td></tr>`).join("")||`<tr><td colspan="7" class="dim">进程数据暂不可用</td></tr>`;

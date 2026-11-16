@@ -81,3 +81,23 @@ func TestProcessesRejectsOutOfRangeAndUnknownParameters(t *testing.T) {
 		})
 	}
 }
+
+func TestProcessesReportsRunningPure(t *testing.T) {
+	res, err := Processes(context.Background(), map[string]any{"top": float64(5)})
+	if err != nil {
+		t.Fatalf("Processes failed: %v", err)
+	}
+	// running_pure 必须存在且非负（纯 R 计数，绝不等于 R+D loadavg 混用）。
+	rp, ok := res["running_pure"].(int)
+	if !ok {
+		t.Fatalf("running_pure missing or wrong type: %T", res["running_pure"])
+	}
+	if rp < 0 {
+		t.Fatalf("running_pure negative: %d", rp)
+	}
+	// total_processes 必须 >= running_pure（纯 R 不会超过总数）。
+	tp, _ := res["total_processes"].(int)
+	if tp > 0 && rp > tp {
+		t.Fatalf("running_pure (%d) exceeds total_processes (%d)", rp, tp)
+	}
+}
