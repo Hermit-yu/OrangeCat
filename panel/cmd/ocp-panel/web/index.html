@@ -292,7 +292,7 @@ section .panel-card{margin-bottom:22px}
 @media (max-width:500px){.metric-grid.metric-grid--5{grid-template-columns:1fr}}
 .metric-card__icon{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:var(--surface-raised);border:1px solid var(--border);color:var(--brand);margin-bottom:8px}
 /* P16：状态徽章（Normal / 外网已识别 / Agent online） */
-.status-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--border)}
+.status-badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:5px 14px;border-radius:999px;border:1px solid var(--border)}
 .status-badge--ok{color:var(--success);background:var(--success-soft);border-color:color-mix(in srgb,var(--success) 30%,var(--border))}
 .status-badge--warn{color:var(--warning);background:var(--warning-soft);border-color:color-mix(in srgb,var(--warning) 30%,var(--border))}
 .status-badge--info{color:var(--blue);background:var(--blue-soft);border-color:color-mix(in srgb,var(--blue) 30%,var(--border))}
@@ -1198,9 +1198,6 @@ async function refresh(){
         `<div class="netloc-item"><div class="netloc-k">公网 IPv6</div><div class="netloc-v">${esc(v6)}</div></div>`+
         `<div class="netloc-item"><div class="netloc-k">本地 IPv4</div><div class="netloc-v">${esc(li)}</div></div>`;
     });
-    // 网卡流量（物理接口累计，保持真实性）
-    const ifaces=phyIfaces;
-    nil.insertAdjacentHTML("beforeend",ifaces.length?ifaces.map(n=>`<div class="netloc-item"><div class="netloc-k">${esc(n.name)} 累计</div><div class="netloc-v">↓${fmtBytes(n.rx_bytes)} · ↑${fmtBytes(n.tx_bytes)}</div></div>`).join(""):"");
   }
   // 资源汇总
   const rS=document.getElementById("resSites");if(rS)rS.textContent=ng.sites?(ng.sites.count??0):"—";
