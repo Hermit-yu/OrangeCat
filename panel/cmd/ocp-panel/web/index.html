@@ -1070,7 +1070,11 @@ document.getElementById("btnLogout").addEventListener("click",logout);
 function fmtBytes(n){if(!n&&n!==0)return"—";const u=["B","KB","MB","GB","TB"];let i=0;while(n>=1024&&i<u.length-1){n/=1024;i++}return n.toFixed(1)+" "+u[i]}
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}
 // 侧栏导航切换
-function navTo(id){document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden"));const sec=document.getElementById(id);if(sec)sec.classList.remove("hidden");document.querySelectorAll(".sidebar__link").forEach(l=>l.classList.toggle("router-link-active",l.dataset.target===id));const t=document.getElementById("pageTitle");if(t&&document.querySelector(".sidebar__link[data-target='"+id+"']"))t.firstChild.textContent=document.querySelector(".sidebar__link[data-target='"+id+"']").textContent.trim();}
+function navTo(id){document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden"));const sec=document.getElementById(id);if(sec)sec.classList.remove("hidden");document.querySelectorAll(".sidebar__link").forEach(l=>l.classList.toggle("router-link-active",l.dataset.target===id));const t=document.getElementById("pageTitle");if(t&&document.querySelector(".sidebar__link[data-target='"+id+"']"))t.firstChild.textContent=document.querySelector(".sidebar__link[data-target='"+id+"']").textContent.trim();
+  // 切到重活视图时清慢缓存，立即拉新（否则 30s/15s 内可能是陈旧数据）
+  if(window.__slowData?._t){if(id==="secNginx")window.__slowData._t.ng=0;if(id==="secProc")window.__slowData._t.pc=0;}
+  if(id==="secNginx"||id==="secProc")setTimeout(()=>refresh().catch(()=>{}),50);
+}
 function initNav(){const links=document.querySelectorAll(".sidebar__link");links.forEach(l=>l.addEventListener("click",()=>{if(l.dataset.target)navTo(l.dataset.target)}));}
 // 核心服务（概览板块）：对接真实数据源，不编造。
 // 底层支持服务 = systemd 服务（Docker Engine 等）+ Docker 容器（nginx/mysql/redis/php 等）。
@@ -1127,7 +1131,21 @@ async function loadNetPublic(){
   return _netPublicCache;
 }
 async function refresh(){
-  const [ov,dock,ng,nx,pc]=await Promise.all(["/api/overview","/api/docker","/api/nginx","/api/net","/api/processes"].map(u=>fetch(APP_BASE+u,{credentials:"same-origin"}).then(r=>r.ok?r.json():{agent_error:"HTTP "+r.status})));
+  if(window.__refreshing)return;
+  window.__refreshing=true;
+  try{
+  // 快慢分离：overview/docker/net 每 5s 实时；nginx/processes 是重活端点，
+  // 用 __slowData 缓存按各自新鲜度拉取（nginx 30s / processes 15s），
+  // 避免每 5s 全量重建隐藏视图并减少后端日志扫描开销。
+  const slowAge=(k,ttl)=>!window.__slowData?true:(Date.now()-(window.__slowData._t?.[k]||0))>ttl;
+  const needSlow=slowAge("ng",30000)||slowAge("pc",15000);
+  const [ov,dock,nx]=await Promise.all(["/api/overview","/api/docker","/api/net"].map(u=>fetch(APP_BASE+u,{credentials:"same-origin"}).then(r=>r.ok?r.json():{agent_error:"HTTP "+r.status})));
+  let ng=window.__slowData?.ng||{},pc=window.__slowData?.pc||{};
+  if(needSlow){
+    const [ngR,pcR]=await Promise.all(["/api/nginx","/api/processes"].map(u=>fetch(APP_BASE+u,{credentials:"same-origin"}).then(r=>r.ok?r.json():{agent_error:"HTTP "+r.status})));
+    ng=ngR;pc=pcR;
+    window.__slowData={ng,pc,_t:{...window.__slowData?._t,ng:Date.now(),pc:Date.now()}};
+  }
   const o=ov.info||{},m=ov.metrics||{};
   hostLabel.textContent=o.hostname?("· "+o.hostname+" / "+o.distro):"";
   const ht=document.getElementById("hostLabelTop");if(ht)ht.textContent=o.hostname?("· "+o.hostname):"";
@@ -1395,6 +1413,8 @@ async function refresh(){
       document.getElementById("nginxPaneTraffic").classList.toggle("hidden",ntab!=="traffic");
       document.getElementById("nginxPaneEnv").classList.toggle("hidden",ntab!=="env");
       if(ntab==="traffic"&&!window.__nginxLogLoaded){window.__nginxLogLoaded=1;loadNginxLog().catch(()=>{})}
+      if(window.__slowData?._t)window.__slowData._t.ng=0;
+      refresh().catch(()=>{});
     }));
   }
   const nsInput=document.getElementById("nginxSearch");
@@ -1466,6 +1486,7 @@ async function refresh(){
   }
   if(!window.__navInit){window.__navInit=1;initNav();}
   if(!window.__ovNavInit){window.__ovNavInit=1;bindOverviewNav();}
+  }finally{window.__refreshing=false;}
 }
 
 let fsCurrent="/home/web";
@@ -2250,6 +2271,6 @@ function ocpApplyLang(){
 function ocpTogLang(){ocpStoreSet("ocpLang",ocpCurLang()==="en"?"zh":"en");ocpApplyLang()}
 document.getElementById("btnLang").addEventListener("click",ocpTogLang);
 try{ocpApplyLang()}catch{}
-(async()=>{const r=await fetch(APP_BASE+"/api/overview",{credentials:"same-origin"});if(r.status===401)return;refresh().catch(()=>{});setInterval(()=>refresh().catch(()=>{}),5000)})();</script>
+(async()=>{const r=await fetch(APP_BASE+"/api/overview",{credentials:"same-origin"});if(r.status===401)return;const tick=()=>{if(document.hidden)return;refresh().catch(()=>{})};tick();setInterval(tick,5000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)tick()})})();</script>
 </body>
 </html>
