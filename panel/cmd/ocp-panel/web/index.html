@@ -1134,11 +1134,15 @@ async function refresh(){
   if(window.__refreshing)return;
   window.__refreshing=true;
   try{
-  // 快慢分离：overview/docker/net 每 5s 实时；nginx/processes 是重活端点，
-  // 用 __slowData 缓存按各自新鲜度拉取（nginx 30s / processes 15s），
-  // 避免每 5s 全量重建隐藏视图并减少后端日志扫描开销。
+  // 1s 轻量刷新但重 DOM 重建节流：进程/nginx/docker 表 ≥5s 才重建，
+  // 避免每 1s 全量 innerHTML 重建隐藏视图的 DOM 开销。
+  const nowMs=Date.now();
+  window.__heavyOk={d:nowMs-5000> (window.__heavyT?.d||0),n:nowMs-5000>(window.__heavyT?.n||0),p:nowMs-5000>(window.__heavyT?.p||0)};
+  // 快慢分离：overview/docker/net 每 1s 实时；nginx/processes 是重活端点，
+  // 用 __slowData 缓存按各自新鲜度拉取（nginx 5s / processes 5s），
+  // 与重表 5s 节流对齐，避免每 1s 全量重建隐藏视图并减少后端日志扫描开销。
   const slowAge=(k,ttl)=>!window.__slowData?true:(Date.now()-(window.__slowData._t?.[k]||0))>ttl;
-  const needSlow=slowAge("ng",30000)||slowAge("pc",15000);
+  const needSlow=slowAge("ng",5000)||slowAge("pc",5000);
   const [ov,dock,nx]=await Promise.all(["/api/overview","/api/docker","/api/net"].map(u=>fetch(APP_BASE+u,{credentials:"same-origin"}).then(r=>r.ok?r.json():{agent_error:"HTTP "+r.status})));
   let ng=window.__slowData?.ng||{},pc=window.__slowData?.pc||{};
   if(needSlow){
@@ -1248,6 +1252,8 @@ async function refresh(){
   const actBtns=(n,state)=>`<div class="docker-ops">`+
     (state==="running"?`<button class="actbtn act-stop" data-name="${esc(n)}" title="停止">停止</button><button class="actbtn act-restart" data-name="${esc(n)}" title="重启">重启</button><button class="actbtn act-kill actdanger" data-name="${esc(n)}" title="强杀">强杀</button>`:`<button class="actbtn act-start" data-name="${esc(n)}" title="启动">启动</button>`)+
     `<button class="actbtn act-kill actdanger" data-name="${esc(n)}" title="删除">删除</button></div>`;
+  if(window.__heavyOk.d){
+  window.__heavyT={...(window.__heavyT||{}),d:Date.now()};
   ctb.innerHTML=dShown.map(c=>`<tr>
     <td><div class="site-cell"><span class="site-name">${esc(c.name)}</span><div class="cell-sub">${esc(c.image||"")}</div></div></td>
     <td><span class="dock-state ${c.state==="running"?"dock-running":c.state==="exited"?"dock-exited":"dock-paused"}"><span class="dot"></span>${c.state==="running"?"运行中":c.state==="exited"?"已退出":esc(c.state||"未知")}</span><div class="cell-sub">${esc(c.status||"")}</div></td>
@@ -1271,6 +1277,7 @@ async function refresh(){
       if(good){const st=res&&res.post_state?res.post_state:(res&&res.state?res.state:"未知");alert("操作已执行，当前状态："+st);setDockerDirty();refresh().catch(()=>{})}else{alert("未执行："+(err||"请求被拒绝"))}
     }).catch(e=>alert("请求失败："+e)).finally(()=>{b.disabled=false;b.textContent=label});
   }));
+  }
   const ntb=document.querySelector("#nginxT tbody");
   const nsAll=(ng.sites&&ng.sites.sites)||[];
   const all=nsAll;
@@ -1310,6 +1317,8 @@ async function refresh(){
   const srcLabel=s=>{const f=s.file||"";if(f.includes("/conf.d/"))return "站点目录";return "配置文件"};
   const ncount=document.getElementById("nginxCount");
   if(ncount)ncount.textContent="显示 "+ns.length+" / "+all.length+" 个站点";
+  if(window.__heavyOk.n){
+  window.__heavyT={...(window.__heavyT||{}),n:Date.now()};
   ntb.innerHTML=ns.map((s,idx)=>{
     const ty=siteType(s);
     const names=(s.names||[]).filter(n=>n&&n!=="_");
@@ -1359,6 +1368,7 @@ async function refresh(){
       box.querySelector(".sites-detail").textContent=det.content+(det.truncated?"\n…（内容超长已截断）":"");
     }catch(e){box.querySelector(".sites-detail").textContent="请求失败："+e}
   }));
+  }
   if(!window.__dockerResLoaded){window.__dockerResLoaded=1;loadDockerResources().catch(()=>{})}
   const pnb=document.querySelector("#netT tbody");
   const nts=(nx.interfaces&&nx.interfaces.interfaces)||[];
@@ -1375,11 +1385,14 @@ async function refresh(){
   setNum("procCount",String(pmeta.total_processes??ps.length));
   setNum("procRunning",String(pmeta.running_pure??pmeta.running_processes??ps.filter(p=>p.state==="R").length));
   setNum("procMemTot",memTot.toFixed(0)+" MB");setNum("procCpuAvg",cpuAvg.toFixed(1)+"%");
+  if(window.__heavyOk.p){
+  window.__heavyT={...(window.__heavyT||{}),p:Date.now()};
   const stCls=s=>s==="R"?"sterr":(s==="S"?"stok":"dim");
   ptb.innerHTML=shown.map(p=>`<tr><td>${esc(p.pid)}</td><td>${esc(p.name)}</td><td class="${stCls(p.state)}">${esc(p.state||"")}</td><td>${esc(p.cpu_pct??"")}</td><td>${esc(p.uid)}</td><td>${esc(p.rss_mb)}</td><td><button class="logout-button killbtn muted" data-pid="${esc(p.pid)}" data-name="${esc(p.name)}" data-st="${esc(p.start_time||"")}">结束</button></td></tr>`).join("")||`<tr><td colspan="7" class="dim">进程数据暂不可用</td></tr>`;
   ptb.querySelectorAll(".killbtn").forEach(b=>b.addEventListener("click",()=>{
     if(confirm(`结束进程 PID ${b.dataset.pid} (${b.dataset.name})？默认发送 SIGTERM。`)){postJSON("/api/processes/kill",{pid:Number(b.dataset.pid),signal:"TERM",start_time:b.dataset.st?Number(b.dataset.st):undefined}).then(t=>{let ok=false,err="";try{const j=JSON.parse(t);ok=j.ok===true;err=j.agent_error||""}catch{}if(ok){alert("已发送 SIGTERM");refresh().catch(()=>{})}else{alert("未成功发送信号："+(err||"请求被拒绝"))}}).catch(e=>alert("请求失败："+e))}
   }));
+  }
   const procS=document.getElementById("procSearch");
   if(procS&&!window.__procSearch){window.__procSearch=1;procS.addEventListener("input",()=>{refresh().catch(()=>{})})}
   if(svcFilter.dataset.loaded!=="1"||svcFilter.dataset.last!==svcFilter.value)loadServices();
@@ -2271,6 +2284,6 @@ function ocpApplyLang(){
 function ocpTogLang(){ocpStoreSet("ocpLang",ocpCurLang()==="en"?"zh":"en");ocpApplyLang()}
 document.getElementById("btnLang").addEventListener("click",ocpTogLang);
 try{ocpApplyLang()}catch{}
-(async()=>{const r=await fetch(APP_BASE+"/api/overview",{credentials:"same-origin"});if(r.status===401)return;const tick=()=>{if(document.hidden)return;refresh().catch(()=>{})};tick();setInterval(tick,5000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)tick()})})();</script>
+(async()=>{const r=await fetch(APP_BASE+"/api/overview",{credentials:"same-origin"});if(r.status===401)return;const tick=()=>{if(document.hidden)return;refresh().catch(()=>{})};tick();setInterval(tick,1000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)tick()})})();</script>
 </body>
 </html>
