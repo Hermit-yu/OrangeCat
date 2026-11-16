@@ -1765,6 +1765,17 @@ async function termPanePoll(i){
 }
 // 底部输入：发到当前活动窗格
 async function termInput(e){
+  if(e.ctrlKey&&(e.key==="l"||e.key==="L")){ // Ctrl+L 清屏
+    e.preventDefault();
+    const p=__termPanes.panes[__termPanes.active];
+    if(!p||!p.sessionId)return;
+    p.buf="";const o=termPaneOut(__termPanes.active);if(o){o.innerHTML="";o.scrollTop=0}
+    try{
+      const csrf=csrfCookie();
+      await fetch(APP_BASE+"/api/pty/input",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrf},body:JSON.stringify({session_id:p.sessionId,data:"\x0c"})});
+    }catch(err){}
+    return;
+  }
   if(e.key==="Enter"){
     const p=__termPanes.panes[__termPanes.active];
     if(!p||!p.sessionId){const ti=document.getElementById("termIn");if(ti){ti.disabled=true}return}
