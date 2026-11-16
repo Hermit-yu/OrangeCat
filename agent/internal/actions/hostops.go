@@ -271,7 +271,7 @@ func DockerContainers(ctx context.Context, p map[string]any) (map[string]any, er
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, "docker", "ps", "-a", "--format",
-		`{"name":"{{.Names}}","state":"{{.State}}","status":"{{.Status}}","image":"{{.Image}}","ports":"{{.Ports}}"}`).Output()
+		`{"name":"{{.Names}}","state":"{{.State}}","status":"{{.Status}}","image":"{{.Image}}","ports":"{{.Ports}}","network":"{{.Networks}}","compose":"{{.Label "com.docker.compose.project"}}","running_for":"{{.RunningFor}}"}`).Output()
 	if err != nil {
 		return map[string]any{"available": false, "error": err.Error()}, nil
 	}
