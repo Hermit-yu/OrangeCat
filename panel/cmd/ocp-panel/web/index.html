@@ -2482,7 +2482,7 @@ async function aiSend(){
     const csrf=csrfCookie();
     // 只传最近 20 条历史（agent 侧也会强制上限）
     const hist=aiCurMessages().slice(-20).filter(m=>m.role!=="user"||m.content!==text);
-    const r=await fetch(APP_BASE+"/api/ai/chat",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrf},body:JSON.stringify({message:text,history:hist,model:aiProvider==="agnes"?"agnes-3.0-flash":"",base_url:aiProvider==="agnes"?"":"",provider:aiProvider})});
+    const r=await fetch(APP_BASE+"/api/ai/chat",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrf},body:JSON.stringify({message:text,history:hist,model:aiProvider==="agnes"?"agnes-3.0-flash":""})});
     const j=await readJSONSafe(r);
     if(!j.ok){document.getElementById("aiErr").textContent="请求失败："+((j.data&&j.data.agent_error)||j.text||("HTTP "+r.status));aiTyping(false);return}
     const reply=(j.data.result&&j.data.result.reply)||"";
