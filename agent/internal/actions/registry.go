@@ -62,6 +62,11 @@ func NewRegistry() *Registry {
 	// P2：Compose 项目生命周期（写动作，上/下必须落在 allowlisted 路径）
 	r.Register("compose.up", ComposeUp)
 	r.Register("compose.down", ComposeDown)
+	// P17：定时任务管理（本机 root crontab 的 list/add/remove/toggle）
+	r.Register("cron.list", noParamsCronList)
+	r.Register("cron.add", CronAdd)
+	r.Register("cron.remove", CronRemove)
+	r.Register("cron.toggle", CronToggle)
 	// P11：应用目录与生态适配
 	r.Register("apps.catalog", noParams(AppsCatalog))
 	r.Register("apps.install", AppsInstall)

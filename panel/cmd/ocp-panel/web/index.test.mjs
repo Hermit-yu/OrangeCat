@@ -129,3 +129,13 @@ test("docker resources render the documented fields", () => {
   assert.match(js, /v\.used_by\|\|\[\]/, "volumes must read using containers");
   assert.match(js, /im\.images&&im\.images\.images/, "images must unwrap the api envelope");
 });
+
+// P17：定时任务的 toggle/remove 是动态渲染的按钮，必须在渲染后绑定 click，
+// 否则按钮点了没反应（用户点了删除/停用却毫无反馈、crontab 不变）。
+test("cron row buttons bind click handlers after render", () => {
+  const js = scripts[0][1];
+  assert.match(js, /body\.querySelectorAll\("\[data-cron-op\]"\)\.forEach/,
+    "cron rows must bind click handlers to toggle/remove buttons after innerHTML render");
+  assert.match(js, /data-cron-op="toggle"/, "must render a toggle button");
+  assert.match(js, /data-cron-op="remove"/, "must render a remove button");
+});

@@ -170,6 +170,9 @@ func main() {
 	mux.HandleFunc("/api/compose/validate", p.requireAuth(p.handleComposeValidate))
 	mux.HandleFunc("/api/compose/status", p.requireAuth(p.handleComposeStatus))
 	mux.HandleFunc("/api/compose/action", p.handleComposeAction)
+	// P17：定时任务管理（本机 root crontab）
+	mux.HandleFunc("/api/cron/list", p.requireAuth(p.handleCronList))
+	mux.HandleFunc("/api/cron/action", p.handleCronAction)
 	mux.HandleFunc("/api/docker/action", p.handleContainerAction)
 	// P3：Nginx 站点与证书发现 + test/reload 写操作
 	mux.HandleFunc("/api/nginx/full", p.requireAuth(p.handleNginxFull))
