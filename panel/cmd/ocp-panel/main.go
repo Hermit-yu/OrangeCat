@@ -169,6 +169,7 @@ func main() {
 	mux.HandleFunc("/api/compose/projects", p.requireAuth(p.handleComposeProjects))
 	mux.HandleFunc("/api/compose/validate", p.requireAuth(p.handleComposeValidate))
 	mux.HandleFunc("/api/compose/status", p.requireAuth(p.handleComposeStatus))
+	mux.HandleFunc("/api/compose/action", p.handleComposeAction)
 	mux.HandleFunc("/api/docker/action", p.handleContainerAction)
 	// P3：Nginx 站点与证书发现 + test/reload 写操作
 	mux.HandleFunc("/api/nginx/full", p.requireAuth(p.handleNginxFull))

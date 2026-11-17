@@ -50,3 +50,50 @@ func TestComposeValidateRejectsExtraParams(t *testing.T) {
 		t.Fatal("compose.validate must reject unknown parameters")
 	}
 }
+
+// TestComposeUpRejectsUnknownPath enforces the allowlist boundary for writes.
+func TestComposeUpRejectsUnknownPath(t *testing.T) {
+	for _, path := range []string{
+		"", "/etc/passwd", "/root/.ssh/id_rsa", "/home/web/docker-compose1.yml",
+		"../docker-compose.yml", "/opt/horizon/../../etc/passwd",
+	} {
+		if _, err := ComposeUp(context.Background(), map[string]any{"path": path}); err == nil {
+			t.Errorf("path %q must be refused by compose.up", path)
+		}
+	}
+}
+
+// TestComposeDownRejectsUnknownPath mirrors up.
+func TestComposeDownRejectsUnknownPath(t *testing.T) {
+	for _, path := range []string{
+		"", "/etc/passwd", "/root/.ssh/id_rsa", "/home/web/docker-compose1.yml",
+		"../docker-compose.yml", "/opt/horizon/../../etc/passwd",
+	} {
+		if _, err := ComposeDown(context.Background(), map[string]any{"path": path}); err == nil {
+			t.Errorf("path %q must be refused by compose.down", path)
+		}
+	}
+}
+
+// TestComposeUpAcceptsKnownPath verifies the allowlist passes for known projects.
+func TestComposeUpAcceptsKnownPath(t *testing.T) {
+	for _, path := range []string{"/home/web/docker-compose.yml", "/opt/horizon/docker-compose.yml"} {
+		if !isKnownComposePath(path) {
+			t.Errorf("known path %q must be accepted by the allowlist", path)
+		}
+	}
+}
+
+// TestComposeUpRejectsExtraParams keeps the write surface closed.
+func TestComposeUpRejectsExtraParams(t *testing.T) {
+	if _, err := ComposeUp(context.Background(), map[string]any{"path": "/opt/horizon/docker-compose.yml", "extra": "x"}); err == nil {
+		t.Fatal("compose.up must reject unknown parameters")
+	}
+}
+
+// TestComposeDownRejectsExtraParams mirrors up.
+func TestComposeDownRejectsExtraParams(t *testing.T) {
+	if _, err := ComposeDown(context.Background(), map[string]any{"path": "/opt/horizon/docker-compose.yml", "extra": "x"}); err == nil {
+		t.Fatal("compose.down must reject unknown parameters")
+	}
+}

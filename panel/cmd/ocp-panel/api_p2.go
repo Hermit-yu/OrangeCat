@@ -134,6 +134,76 @@ func (p *panel) handleComposeStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"compose": data, "agent_error": errStr(err)})
 }
 
+// ---------- P2 写接口：Compose 项目生命周期 ----------
+
+// composeActions is the closed compose write surface: only up and down are
+// exposed. down never passes -v, so volumes are always preserved.
+var composeActions = map[string]struct{}{
+	"up": {}, "down": {},
+}
+
+// handleComposeAction starts or stops a known compose project behind the
+// three-way write gate (Origin + session + CSRF), and audits every accepted
+// call. The path is still re-checked against the discovery allowlist inside
+// the agent action, so this cannot become a "run docker compose anywhere"
+// primitive.
+func (p *panel) handleComposeAction(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, ok := p.requireWriteAccess(w, r, authaudit.TypeComposeAction); !ok {
+		return
+	}
+
+	var in struct {
+		Path   string `json:"path"`
+		Action string `json:"action"`
+	}
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<10))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&in); err != nil {
+		p.recordComposeRejected(w, r, authaudit.ReasonComposeRequestBad, "请求格式无效", http.StatusBadRequest)
+		return
+	}
+	action := strings.ToLower(strings.TrimSpace(in.Action))
+	if _, allowed := composeActions[action]; !allowed {
+		p.recordComposeRejected(w, r, authaudit.ReasonComposeRequestBad, "操作类型不受支持", http.StatusBadRequest)
+		return
+	}
+	path := strings.TrimSpace(in.Path)
+	if path == "" {
+		p.recordComposeRejected(w, r, authaudit.ReasonComposeRequestBad, "路径为空", http.StatusBadRequest)
+		return
+	}
+
+	data, err := p.clients.Call("compose."+action, map[string]any{"path": path})
+	if err != nil {
+		p.recordComposeRejected(w, r, authaudit.ReasonComposeActionFailed, errStr(err), http.StatusConflict)
+		return
+	}
+	if ok, _ := data["ok"].(bool); !ok {
+		reason, _ := data["error"].(string)
+		if reason == "" {
+			reason = "操作未执行"
+		}
+		p.recordComposeRejected(w, r, authaudit.ReasonComposeActionFailed, reason, http.StatusConflict)
+		return
+	}
+	if err := p.recordAuth(r, authaudit.TypeComposeAction, authaudit.OutcomeSuccess, authaudit.ReasonComposeActionSent); err != nil {
+		log.Printf("Compose 操作审计写入失败: %v", err)
+	}
+	writeJSON(w, map[string]any{"ok": true, "result": data})
+}
+
+func (p *panel) recordComposeRejected(w http.ResponseWriter, r *http.Request, reason, message string, status int) {
+	if err := p.recordAuth(r, authaudit.TypeComposeAction, authaudit.OutcomeRejected, reason); err != nil {
+		log.Printf("Compose 操作审计写入失败: %v", err)
+	}
+	w.WriteHeader(status)
+	writeJSON(w, map[string]any{"ok": false, "result": nil, "agent_error": message})
+}
+
 // ---------- P2 写接口：容器生命周期 ----------
 
 // containerActions is the closed write surface. Anything else — including

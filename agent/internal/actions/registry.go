@@ -59,6 +59,9 @@ func NewRegistry() *Registry {
 	r.Register("compose.projects", noParams(ComposeProjects))
 	r.Register("compose.validate", ComposeValidate)
 	r.Register("compose.status", noParams(ComposeStatus))
+	// P2：Compose 项目生命周期（写动作，上/下必须落在 allowlisted 路径）
+	r.Register("compose.up", ComposeUp)
+	r.Register("compose.down", ComposeDown)
 	// P11：应用目录与生态适配
 	r.Register("apps.catalog", noParams(AppsCatalog))
 	r.Register("apps.install", AppsInstall)

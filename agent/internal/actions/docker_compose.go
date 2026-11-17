@@ -15,7 +15,8 @@ import (
 // allowlist rather than a recursive walk: a single request must never be able to
 // point the panel at an arbitrary file on the host, because compose files
 // routinely carry secrets and reading one through the web would leak them to a
-// browser. Up/down are deliberately NOT implemented here.
+// browser. Up/down are write actions gated by the same allowlist, and down never
+// removes volumes.
 var composeRoots = []string{"/home/web", "/opt"}
 
 // composeFileNames are the only filenames treated as a compose project. Files
@@ -188,6 +189,69 @@ func ComposeValidate(ctx context.Context, p map[string]any) (map[string]any, err
 		if len(msg) > 500 {
 			msg = msg[:500]
 		}
+		if msg == "" {
+			msg = err.Error()
+		}
+		result["error"] = msg
+	}
+	return result, nil
+}
+
+// ---------- Compose 项目生命周期（写动作） ----------
+
+// composeUpTimeout bounds a full image pull + start; compose down is much
+// faster but shares the ceiling so a stuck daemon cannot pin a request forever.
+const composeLifecycleTimeout = 180 * time.Second
+
+// ComposeUp starts a known compose project in detached mode.
+func ComposeUp(ctx context.Context, p map[string]any) (map[string]any, error) {
+	return composeLifecycle(ctx, p, "up", "-d")
+}
+
+// ComposeDown stops a known compose project. Volumes are preserved on purpose:
+// removing data stores must stay a manual, deliberate act on the host.
+func ComposeDown(ctx context.Context, p map[string]any) (map[string]any, error) {
+	return composeLifecycle(ctx, p, "down")
+}
+
+// composeLifecycle is the single gate both write actions pass through: exact
+// parameter set, absolute allowlisted path, fixed verb, no user-supplied flags
+// or file arguments. The allowlist is re-derived at call time, so a project that
+// disappeared since discovery is refused rather than acted on blindly.
+func composeLifecycle(ctx context.Context, p map[string]any, verb string, extra ...string) (map[string]any, error) {
+	for key := range p {
+		if key != "path" {
+			return nil, fmt.Errorf("compose.%s accepts only path", verb)
+		}
+	}
+	path := strings.TrimSpace(mustString(p, "path"))
+	if path == "" {
+		return nil, fmt.Errorf("path is required")
+	}
+	if !filepath.IsAbs(path) {
+		return nil, fmt.Errorf("path must be absolute")
+	}
+	if !isKnownComposePath(path) {
+		return nil, fmt.Errorf("path is not a known compose project file")
+	}
+	ctx, cancel := context.WithTimeout(ctx, composeLifecycleTimeout)
+	defer cancel()
+	args := append([]string{"compose", "-f", path, verb}, extra...)
+	out, err := exec.CommandContext(ctx, "docker", args...).CombinedOutput()
+	result := map[string]any{
+		"available": true,
+		"path":      path,
+		"action":    verb,
+		"ok":        err == nil,
+	}
+	msg := strings.TrimSpace(string(out))
+	if len(msg) > 800 {
+		msg = msg[:800]
+	}
+	if msg != "" {
+		result["output"] = msg
+	}
+	if err != nil {
 		if msg == "" {
 			msg = err.Error()
 		}

@@ -415,7 +415,7 @@ section .panel-card{margin-bottom:22px}
 .st-config_only{color:var(--text-muted);border-color:var(--border);background:var(--surface-raised)}
 .sites-detail{margin:4px 0 8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:260px;overflow:auto}
 /* Compose 项目卡片 */
-.compose-section{margin-bottom:18px}
+.compose-section{margin-bottom:18px;margin-top:18px}
 .compose-head{font-size:12px;color:var(--text-muted);margin-bottom:10px}
 .compose-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
 .compose-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;padding:14px}
@@ -699,8 +699,14 @@ section .panel-card{margin-bottom:22px}
               <div id="logOut" class="padtop small logbox"><div class="dim">输入容器名后查看</div></div>
             </div>
           </div>
+          <div class="compose-section" id="composeSection">
+            <div class="docker-toolbar">
+              <div class="docker-toolbar-title"><span data-i18n="compose_title">Compose 项目</span><span class="cell-sub" id="composeSummary">—</span></div>
+              <button id="composeRefresh" class="logout-button">刷新</button>
+            </div>
+            <div class="compose-cards" id="composeCards"></div>
+          </div>
         </section>
-        <!-- Nginx / Sites（P3 发现 + 切片 B：状态标签页 + 详情） -->
         <section id="secNginx" class="view hidden">
           <div class="panel-card pad0 nginx-shell">
             <div class="nginx-tabs" id="nginxTabs">
@@ -1367,7 +1373,7 @@ async function refresh(){
     }catch(e){box.querySelector(".sites-detail").textContent="请求失败："+e}
   }));
   }
-  if(!window.__dockerResLoaded){window.__dockerResLoaded=1;loadDockerResources().catch(()=>{})}
+  if(!window.__dockerResLoaded){window.__dockerResLoaded=1;loadDockerResources().catch(()=>{});loadCompose().catch(()=>{})}
   const pnb=document.querySelector("#netT tbody");
   const nts=(nx.interfaces&&nx.interfaces.interfaces)||[];
   pnb.innerHTML=nts.map(n=>`<tr><td>${esc(n.name)}</td><td>${fmtBytes(n.rx_bytes)}</td><td>${fmtBytes(n.tx_bytes)}</td></tr>`).join("")||`<tr><td colspan="3" class="dim">网卡数据暂不可用</td></tr>`;
@@ -1465,7 +1471,7 @@ async function refresh(){
       if(dt!=="containers"&&!window.__dockerResLoaded){window.__dockerResLoaded=1;loadDockerResources().catch(()=>{})}
     }));
     const dr=document.getElementById("dockerRefresh");
-    if(dr)dr.addEventListener("click",()=>{refresh().catch(()=>{});loadDockerResources().catch(()=>{})});
+    if(dr)dr.addEventListener("click",()=>{refresh().catch(()=>{});loadDockerResources().catch(()=>{});loadCompose().catch(()=>{})});
     const ds=document.getElementById("dockerSearch");
     if(ds)ds.addEventListener("input",()=>{refresh().catch(()=>{})});
     const dc=document.getElementById("btnDockerClean");
@@ -1902,6 +1908,48 @@ async function loadDockerResources(){
   setT("tabImages",imgRows.length);setT("tabNetworks",netRows.length);setT("tabVolumes",volRows.length);
 }
 function setDockerDirty(){window.__dockerResLoaded=0}
+// ---------- Compose 项目生命周期（P2 写动作） ----------
+async function loadCompose(){
+  const r=await fetch(APP_BASE+"/api/compose/status",{credentials:"same-origin"});
+  const d=await readJSONSafe(r);
+  const payload=(d.data&&d.data.compose)||{};
+  const projects=payload.projects||[];
+  const card=document.getElementById("composeCards");
+  const summary=document.getElementById("composeSummary");
+  if(!projects.length){card.innerHTML=`<div class="dim">Compose 项目暂不可用：${esc(d.data&&d.data.agent_error||"未返回数据")}</div>`;if(summary)summary.textContent="—";return}
+  summary.textContent=`${projects.length} 个项目`;
+  card.innerHTML=projects.map(p=>{
+    const running=p.running||0;const total=p.service_count||0;
+    const runningOk=running>0&&total>0&&running===total;
+    const cls=runningOk?"ok":(running>0?"warn":"off");
+    const status=p.error?`<div class="compose-card__err">${esc(p.error)}</div>`:`<span class="compose-card__status"><span class="dot ${cls}"></span>${running}/${total} 服务运行中</span>`;
+    const disabled=p.error?"disabled":"";
+    return `<div class="compose-card">
+      <div class="compose-card__name">${esc(p.project||"—")}</div>
+      <div class="compose-card__path">${esc(p.path||"—")}</div>
+      ${status}
+      <div class="compose-card__row">
+        <button class="logout-button" ${disabled} data-cup="${esc(p.path||"")}" data-i18n="compose_start">启动</button>
+        <button class="logout-button" ${disabled} data-cdown="${esc(p.path||"")}" data-i18n="compose_stop">停止</button>
+      </div>
+    </div>`;
+  }).join("");
+  card.querySelectorAll("[data-cup]").forEach(b=>b.addEventListener("click",()=>composeAction(b.getAttribute("data-cup"),"up")));
+  card.querySelectorAll("[data-cdown]").forEach(b=>b.addEventListener("click",()=>composeAction(b.getAttribute("data-cdown"),"down")));
+}
+async function composeAction(path,action){
+  const card=document.querySelector(`[data-cup="${CSS.escape(path)}"],[data-cdown="${CSS.escape(path)}"]`);
+  const original=card?card.textContent:"";
+  if(card)card.textContent=action==="up"?"启动中…":"停止中…";
+  try{
+    const t=await postJSON("/api/compose/action",{path,action});
+    const j=JSON.parse(t);
+    const payload=j&&j.result;
+    if(!j.ok||!payload){alert("错误: "+(j&&j.agent_error||t));if(card)card.textContent=original;return}
+    if(payload.ok){alert(`已${action==="up"?"启动":"停止"}：${esc(payload.path||path)}`);loadCompose().catch(()=>{})}else{alert(payload.error||"操作未执行");if(card)card.textContent=original}
+  }catch(e){alert("请求失败: "+e);if(card)card.textContent=original}
+}
+document.getElementById("composeRefresh").addEventListener("click",()=>loadCompose().catch(()=>{}));
 document.getElementById("btnLogs").addEventListener("click",async()=>{
   const out=document.getElementById("logOut");const name=logName.value.trim();
   if(!name){out.innerHTML='<div class="logdim">请先输入容器名</div>';return}
@@ -2308,7 +2356,7 @@ document.getElementById("btnBgClear").addEventListener("click",()=>{
 });
 // ── P15：多语言（中/英）+ 可访问性 ──
 const OCP_I18N={
-  zh:{nav_overview:"概览",nav_docker:"Docker 容器",nav_nginx:"Nginx 站点",nav_fs:"文件管理",nav_task:"后台任务",nav_term:"终端",nav_net:"网卡流量",nav_proc:"进程",nav_svc:"服务",nav_health:"主机体检",nav_diag:"链路诊断",nav_chart:"历史趋势",nav_ai:"AI 助手",nav_system:"系统中心",nav_settings:"设置",nav_apps:"应用市场",nav_cluster:"集群",nav_vms:"虚拟机",page_overview:"概览",agent_down:"ocp-agent 当前不可达，以下为错误详情",mode_btn:"桌面模式",mode_btn_on:"经典模式",lang_btn:"EN",lang_title:"切换语言 / Switch language",live_monitoring:"实时监控",live_monitoring_sub:"选择指标查看历史趋势",agent_online:"Agent online",system_info:"系统信息",system_info_sub:"主机与操作系统详情",status_normal:"正常",network_location:"网络与位置",network_location_sub:"公网与本地网络标识",status_public_recognized:"外网已识别",resource_summary:"资源与一致性",resource_summary_sub:"网站、Docker 与来源汇总",res_sites:"网站",res_containers:"容器",res_images:"镜像",system_manage:"系统管理",system_manage_sub:"常用系统工具快捷入口",tool_docker:"容器管理",tool_fs:"文件管理",tool_nginx:"Nginx 站点",tool_svc:"服务状态",tool_health:"主机体检",tool_diag:"链路诊断",core_services:"核心服务",core_services_sub:"关键服务运行状态",nginx_tab_sites:"站点管理",nginx_tab_traffic:"流量与安全",nginx_tab_env:"环境管理",nginx_new_site:"+ 新建网站",nginx_search_ph:"搜索域名、目录或上游地址",nginx_refresh:"刷新",nginx_col_site:"站点",nginx_col_type:"类型 / 目标",nginx_col_cert:"证书",nginx_col_coherence:"一致性",nginx_col_source:"来源",nginx_col_time:"观察时间",nginx_col_op:"操作",nginx_op_detail:"详情",nginx_op_test:"校验",nginx_op_reload:"重载",nginx_op_del:"删除",docker_containers_manage:"容器日常管理",docker_search_ph:"搜索当前资源",docker_clean_stopped:"清理停止容器",docker_new:"+ 新建容器",docker_col_name:"名称",docker_col_state:"状态",docker_col_ports:"端口",docker_col_network:"网络",docker_col_owner:"归属",docker_col_op:"操作"},
+  zh:{nav_overview:"概览",nav_docker:"Docker 容器",nav_nginx:"Nginx 站点",nav_fs:"文件管理",nav_task:"后台任务",nav_term:"终端",nav_net:"网卡流量",nav_proc:"进程",nav_svc:"服务",nav_health:"主机体检",nav_diag:"链路诊断",nav_chart:"历史趋势",nav_ai:"AI 助手",nav_system:"系统中心",nav_settings:"设置",nav_apps:"应用市场",nav_cluster:"集群",nav_vms:"虚拟机",page_overview:"概览",agent_down:"ocp-agent 当前不可达，以下为错误详情",mode_btn:"桌面模式",mode_btn_on:"经典模式",lang_btn:"EN",lang_title:"切换语言 / Switch language",live_monitoring:"实时监控",live_monitoring_sub:"选择指标查看历史趋势",agent_online:"Agent online",system_info:"系统信息",system_info_sub:"主机与操作系统详情",status_normal:"正常",network_location:"网络与位置",network_location_sub:"公网与本地网络标识",status_public_recognized:"外网已识别",resource_summary:"资源与一致性",resource_summary_sub:"网站、Docker 与来源汇总",res_sites:"网站",res_containers:"容器",res_images:"镜像",system_manage:"系统管理",system_manage_sub:"常用系统工具快捷入口",tool_docker:"容器管理",tool_fs:"文件管理",tool_nginx:"Nginx 站点",tool_svc:"服务状态",tool_health:"主机体检",tool_diag:"链路诊断",core_services:"核心服务",core_services_sub:"关键服务运行状态",nginx_tab_sites:"站点管理",nginx_tab_traffic:"流量与安全",nginx_tab_env:"环境管理",nginx_new_site:"+ 新建网站",nginx_search_ph:"搜索域名、目录或上游地址",nginx_refresh:"刷新",nginx_col_site:"站点",nginx_col_type:"类型 / 目标",nginx_col_cert:"证书",nginx_col_coherence:"一致性",nginx_col_source:"来源",nginx_col_time:"观察时间",nginx_col_op:"操作",nginx_op_detail:"详情",nginx_op_test:"校验",nginx_op_reload:"重载",nginx_op_del:"删除",docker_containers_manage:"容器日常管理",docker_search_ph:"搜索当前资源",docker_clean_stopped:"清理停止容器",docker_new:"+ 新建容器",docker_col_name:"名称",docker_col_state:"状态",docker_col_ports:"端口",docker_col_network:"网络",docker_col_owner:"归属",docker_col_op:"操作",compose_title:"Compose 项目",compose_start:"启动",compose_stop:"停止",compose_refresh:"刷新",compose_summary:"Compose 项目"},
   en:{nav_overview:"Overview",nav_docker:"Docker Containers",nav_nginx:"Nginx Sites",nav_fs:"File Manager",nav_task:"Background Tasks",nav_term:"Terminal",nav_net:"Network Traffic",nav_proc:"Processes",nav_svc:"Services",nav_health:"Host Health",nav_diag:"Link Diagnostics",nav_chart:"History Trend",nav_ai:"AI Assistant",nav_system:"System Center",nav_settings:"Settings",nav_apps:"App Market",nav_cluster:"Cluster",nav_vms:"Virtual Machines",page_overview:"Overview",agent_down:"ocp-agent unreachable, details below",mode_btn:"Desktop Mode",mode_btn_on:"Classic Mode",lang_btn:"中文",lang_title:"Switch language",live_monitoring:"Live Monitoring",live_monitoring_sub:"Select a metric to view its history",agent_online:"Agent online",system_info:"System Info",system_info_sub:"Host & OS details",status_normal:"Normal",network_location:"Network & Location",network_location_sub:"Public & local network identity",status_public_recognized:"Public IP recognized",resource_summary:"Resource Summary",resource_summary_sub:"Sites, Docker & sources",res_sites:"Sites",res_containers:"Containers",res_images:"Images",system_manage:"System Management",system_manage_sub:"Quick tools",tool_docker:"Containers",tool_fs:"Files",tool_nginx:"Nginx Sites",tool_svc:"Services",tool_health:"Health",tool_diag:"Diagnostics",core_services:"Core Services",core_services_sub:"Key service status",nginx_tab_sites:"Site management",nginx_tab_traffic:"Traffic and security",nginx_tab_env:"Environment",nginx_new_site:"+ New Website",nginx_search_ph:"Search for domain name, directory or upstream address",nginx_refresh:"Refresh",nginx_col_site:"SITES",nginx_col_type:"TYPE / TARGET",nginx_col_cert:"CERTIFICATE",nginx_col_coherence:"COHERENCE",nginx_col_source:"SOURCE",nginx_col_time:"OBSERVATION TIME",nginx_col_op:"OPERATION",nginx_op_detail:"Detail",nginx_op_test:"Test",nginx_op_reload:"Reload",nginx_op_del:"Delete",docker_containers_manage:"Container Management",docker_search_ph:"Search current resources",docker_clean_stopped:"Clean up stopped",docker_new:"+ New Container",docker_col_name:"NAME",docker_col_state:"STATE",docker_col_ports:"PORTS",docker_col_network:"NETWORK",docker_col_owner:"OWNER",docker_col_op:"OPERATION"}
 };
 function ocpT(key){const l=ocpCurLang();return (OCP_I18N[l]&&OCP_I18N[l][key])||OCP_I18N.zh[key]||key}
