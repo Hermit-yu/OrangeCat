@@ -999,8 +999,24 @@ section .panel-card{margin-bottom:22px}
             </div>
           </div>
           <div class="panel-card">
-            <div class="card-title">系统写操作</div>
-            <div class="dim">主机名 / 时区 / SSH / 防火墙等系统写操作依赖未就绪（需 P6 系统管理能力，未实现不编造）。当前只读展示系统信息。</div>
+            <div class="card-title">系统设置（真实写操作）</div>
+            <div class="cron-add">
+              <div class="cron-add__row">
+                <label class="cron-add__label">SSH 状态</label>
+                <span class="dim" id="sysSSH">读取中…</span>
+              </div>
+              <div class="cron-add__row">
+                <label class="cron-add__label">主机名</label>
+                <input class="cron-add__input" id="sysHostname" placeholder="新主机名" maxlength="64" />
+                <button class="logout-button" id="sysHostnameApply">应用</button>
+              </div>
+              <div class="cron-add__row">
+                <label class="cron-add__label">时区</label>
+                <input class="cron-add__input" id="sysTimezone" placeholder="如 Asia/Shanghai" maxlength="64" />
+                <button class="logout-button" id="sysTimezoneApply">应用</button>
+              </div>
+              <div class="dim cron-add__msg" id="sysWriteMsg">写操作会真实修改本机系统配置，操作前自动备份。防火墙管理无后端实现，不在此列。</div>
+            </div>
           </div>
         </section>
         <!-- 设置（切片 F：账户/外观/主机健康真实，其余标依赖未就绪） -->
@@ -1048,18 +1064,29 @@ section .panel-card{margin-bottom:22px}
             <div class="dim">两步验证 / Passkey / 登录安全入口 / 备份恢复 / MCP / 版本更新：依赖未就绪（无真实实现，不编造）。</div>
           </div>
         </section>
-        <!-- 应用市场（无真实应用源，标依赖未就绪） -->
+        <!-- P11：应用市场（真实 catalog + compose 安装/卸载） -->
         <section id="secApps" class="view hidden">
           <div class="section-head">应用市场</div>
           <div class="panel-card">
-            <div class="dim">应用市场依赖未就绪（需 P11 应用源；当前无真实应用仓库，不编造应用列表）。</div>
+            <div class="cron-toolbar">
+              <span class="dim" id="appsSummary">—</span>
+              <button class="logout-button" id="appsRefresh">刷新</button>
+            </div>
+            <div class="compose-cards" id="appsGrid"></div>
+            <div class="dim cron-hint">应用来自管理员维护的目录（/var/lib/ocp/apps/catalog.json），安装走 <code>docker compose up -d</code>、卸载走 <code>compose down</code>（保留卷）。目录里的 compose 路径必须在本机白名单内。</div>
           </div>
         </section>
         <!-- 集群（无多节点，标依赖未就绪） -->
+        <!-- P8：集群（本机节点真实注册 + 远程节点诚实标注未接入） -->
         <section id="secCluster" class="view hidden">
           <div class="section-head">集群</div>
           <div class="panel-card">
-            <div class="dim">集群管理依赖未就绪（需 P8 多节点；当前单机部署，无节点可管理，不编造集群状态）。</div>
+            <div class="cron-toolbar">
+              <span class="dim" id="clusterSummary">—</span>
+              <button class="logout-button" id="clusterRefresh">刷新</button>
+            </div>
+            <div class="compose-cards" id="clusterGrid"></div>
+            <div class="dim cron-hint" id="clusterHint"></div>
           </div>
         </section>
         <!-- 虚拟机（无 qemu/libvirt，标依赖未就绪） -->
@@ -1143,6 +1170,9 @@ function navTo(id){document.querySelectorAll(".view").forEach(v=>v.classList.add
   if(window.__slowData?._t){if(id==="secNginx")window.__slowData._t.ng=0;if(id==="secProc")window.__slowData._t.pc=0;}
   if(id==="secNginx"||id==="secProc")setTimeout(()=>refresh().catch(()=>{}),50);
   if(id==="secCron"&&!window.__cronLoaded){window.__cronLoaded=1;loadCron().catch(()=>{})}
+  if(id==="secApps"&&!window.__appsLoaded){window.__appsLoaded=1;loadApps().catch(()=>{})}
+  if(id==="secCluster"&&!window.__clusterLoaded){window.__clusterLoaded=1;loadCluster().catch(()=>{})}
+  if(id==="secSystem"&&!window.__sysWriteLoaded){window.__sysWriteLoaded=1;loadSysWrite().catch(()=>{})}
 }
 function initNav(){const links=document.querySelectorAll(".sidebar__link");links.forEach(l=>l.addEventListener("click",()=>{if(l.dataset.target)navTo(l.dataset.target)}));}
 // 核心服务（概览板块）：对接真实数据源，不编造。
@@ -2083,6 +2113,124 @@ document.getElementById("cronAddForm").addEventListener("submit",(e)=>{
   if(sched.split(/\s+/).length!==5){document.getElementById("cronAddMsg").textContent="计划表达式需要 5 个字段（分 时 日 月 周）";return}
   cronAction("add",null);
 });
+// ---------- P11 应用市场（真实 catalog + compose 安装/卸载） ----------
+async function loadApps(){
+  const grid=document.getElementById("appsGrid");
+  const summary=document.getElementById("appsSummary");
+  grid.innerHTML='<div class="dim">读取中…</div>';
+  try{
+    const r=await fetch(APP_BASE+"/api/apps/catalog",{credentials:"same-origin"});
+    const d=await r.json();
+    const items=(d.catalog&&d.catalog.catalog)||[];
+    const err=d.agent_error||(d.catalog&&d.catalog.agent_error);
+    if(!r.ok||(!items.length&&!err)){grid.innerHTML='<div class="dim">应用目录为空或不可用：'+esc(err||("HTTP "+r.status))+'</div>';summary.textContent="—";return}
+    summary.textContent=items.length+" 个应用";
+    grid.innerHTML=items.map(a=>{
+      const badge=a.installed?'<span class="cron-badge on">已安装</span>':'<span class="cron-badge off">未安装</span>';
+      const act=a.installed
+        ?'<button class="logout-button" data-app-op="uninstall" data-app="'+esc(a.name)+'">卸载</button>'
+        :'<button class="logout-button" data-app-op="install" data-app="'+esc(a.name)+'">安装</button>';
+      return '<div class="compose-card">'
+        +'<div class="compose-card__name">'+esc(a.name)+' '+badge+'</div>'
+        +'<div class="compose-card__path">'+esc(a.description||"")+'</div>'
+        +'<div class="compose-card__path">'+esc(a.category||"")+' · '+esc(a.compose_path||"")+'</div>'
+        +'<div class="compose-card__row">'+act+'</div>'
+        +'</div>';
+    }).join("");
+    grid.querySelectorAll("[data-app-op]").forEach(b=>{
+      b.addEventListener("click",()=>{
+        const op=b.getAttribute("data-app-op");
+        const name=b.getAttribute("data-app");
+        const verb=op==="install"?"安装":"卸载";
+        if(!confirm("确认"+verb+"应用 "+name+"？该操作会真实执行 docker compose "+(op==="install"?"up -d":"down")+"。"))return;
+        b.disabled=true;b.textContent="执行中…";
+        appsAction(op,name).finally(()=>loadApps().catch(()=>{}));
+      });
+    });
+  }catch(e){grid.innerHTML='<div class="dim">读取失败：'+esc(e)+'</div>';summary.textContent="—"}
+}
+async function appsAction(op,name){
+  try{
+    const resp=await postJSON("/api/apps/"+op,{name});
+    const j=JSON.parse(resp);
+    if(!j.ok){alert("错误: "+(j.agent_error||resp));return}
+    alert("已提交"+(op==="install"?"安装":"卸载")+"任务：后台执行 compose，请稍后刷新查看状态");
+  }catch(e){alert("请求失败: "+e)}
+}
+document.getElementById("appsRefresh").addEventListener("click",()=>loadApps().catch(()=>{}));
+// ---------- P8 集群（本机节点真实注册） ----------
+async function loadCluster(){
+  const grid=document.getElementById("clusterGrid");
+  const summary=document.getElementById("clusterSummary");
+  const hint=document.getElementById("clusterHint");
+  grid.innerHTML='<div class="dim">读取中…</div>';
+  try{
+    const r=await fetch(APP_BASE+"/api/cluster/nodes",{credentials:"same-origin"});
+    const d=await r.json();
+    const c=d.cluster||{};
+    const local=c.local;
+    const peers=c.peers||[];
+    if(errOf(d)){grid.innerHTML='<div class="dim">集群状态不可用：'+esc(d.agent_error||"无数据")+'</div>';summary.textContent="—";return}
+    summary.textContent=peers.length?("本机 + "+peers.length+" 个节点"):"仅本机节点";
+    let html="";
+    if(local){
+      html+='<div class="compose-card">'
+        +'<div class="compose-card__name">'+esc(local.hostname||local.id||"local")+' <span class="cron-badge on">本机</span></div>'
+        +'<div class="compose-card__path">ID: '+esc(local.id||"local")+' · 角色: '+esc(local.role||"—")+'</div>'
+        +'<div class="compose-card__path">心跳: '+esc(fmtTime(local.last_seen))+'</div>'
+        +'<div class="compose-card__path">能力: '+esc((local.capabilities||[]).join(", "))+'</div>'
+        +'</div>';
+    }
+    if(!peers.length){
+      html+='<div class="compose-card"><div class="compose-card__path">暂无远程节点接入。</div></div>';
+    }else{
+      peers.forEach(p=>{
+        html+='<div class="compose-card"><div class="compose-card__name">'+esc(p.hostname||p.id)+'</div>'
+          +'<div class="compose-card__path">ID: '+esc(p.id)+' · 角色: '+esc(p.role||"—")+'</div>'
+          +'<div class="compose-card__path">最近心跳: '+esc(fmtTime(p.last_seen))+'</div>'
+          +'</div>';
+      });
+    }
+    grid.innerHTML=html;
+    hint.textContent=c.message||"";
+  }catch(e){grid.innerHTML='<div class="dim">读取失败：'+esc(e)+'</div>';summary.textContent="—"}
+}
+function errOf(d){return !!(d&&(d.agent_error||d.error))}
+function fmtTime(iso){
+  if(!iso)return"—";
+  const t=new Date(iso);
+  if(isNaN(t.getTime()))return String(iso);
+  return t.toLocaleString();
+}
+document.getElementById("clusterRefresh").addEventListener("click",()=>loadCluster().catch(()=>{}));
+// ---------- P6 系统设置（SSH 状态 + 主机名/时区 真实写操作） ----------
+async function loadSysWrite(){
+  try{
+    const r=await fetch(APP_BASE+"/api/system/ssh",{credentials:"same-origin"});
+    const d=await r.json();
+    const s=d.ssh||{};
+    const el=document.getElementById("sysSSH");
+    if(el)el.textContent=(s.active===true?"运行中":"未运行/未知")+(s.port?(" · 端口 "+s.port):"");
+  }catch(e){const el=document.getElementById("sysSSH");if(el)el.textContent="读取失败"}
+}
+async function sysSet(kind){
+  const msg=document.getElementById("sysWriteMsg");
+  const input=document.getElementById(kind==="hostname"?"sysHostname":"sysTimezone");
+  const val=(input.value||"").trim();
+  if(!val){msg.textContent="值不能为空";return}
+  if(!confirm("确认修改"+(kind==="hostname"?"主机名":"时区")+"为 "+val+"？此操作会真实修改本机系统配置。"))return;
+  msg.textContent="应用中…";
+  try{
+    const resp=await postJSON("/api/system/"+kind,{[kind]:val,dry_run:false});
+    const j=JSON.parse(resp);
+    if(!j.ok){msg.textContent="失败: "+(j.agent_error||resp);return}
+    msg.textContent="已应用";
+    input.value="";
+    setTimeout(()=>{msg.textContent="写操作会真实修改本机系统配置，操作前自动备份。防火墙管理无后端实现，不在此列。"},3000);
+  }catch(e){msg.textContent="请求失败: "+e}
+}
+document.getElementById("sysHostnameApply").addEventListener("click",()=>sysSet("hostname"));
+document.getElementById("sysTimezoneApply").addEventListener("click",()=>sysSet("timezone"));
 document.getElementById("btnLogs").addEventListener("click",async()=>{
   const out=document.getElementById("logOut");const name=logName.value.trim();
   if(!name){out.innerHTML='<div class="logdim">请先输入容器名</div>';return}

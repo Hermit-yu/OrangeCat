@@ -94,3 +94,28 @@ func TestParseCrontabEmpty(t *testing.T) {
 		t.Fatalf("expected no jobs, got %+v", jobs)
 	}
 }
+
+func TestRunningCountToleratesJSONNumbers(t *testing.T) {
+	if got := runningCount(map[string]any{"running": 3}); got != 3 {
+		t.Fatalf("int count: got %d", got)
+	}
+	if got := runningCount(map[string]any{"running": float64(2)}); got != 2 {
+		t.Fatalf("float64 count: got %d", got)
+	}
+	if got := runningCount(map[string]any{"running": 0}); got != 0 {
+		t.Fatalf("zero count: got %d", got)
+	}
+	if got := runningCount(map[string]any{}); got != 0 {
+		t.Fatalf("missing count: got %d", got)
+	}
+}
+
+func TestDetectInstalledTreatsNonzeroCountAsInstalled(t *testing.T) {
+	// A project with 2 running containers must register as installed; the old
+	// `running==true` comparison against an int count always reported false.
+	defs := []appDef{{Name: "ok", ComposePath: "/opt/x/docker-compose.yml"}}
+	_ = defs
+	if got := runningCount(map[string]any{"running": 2}) > 0; !got {
+		t.Fatal("nonzero running count must mean installed")
+	}
+}

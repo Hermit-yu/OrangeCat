@@ -61,6 +61,8 @@ func AppsCatalog(ctx context.Context, _ map[string]any) (map[string]any, error) 
 }
 
 // detectInstalled checks which catalog apps are actually running via compose ps.
+// composeProjectStatus returns `running` as a container count (not a bool), so
+// "installed" means at least one container of the project is up.
 func detectInstalled(ctx context.Context, defs []appDef) map[string]bool {
 	res := map[string]bool{}
 	for _, d := range defs {
@@ -69,9 +71,23 @@ func detectInstalled(ctx context.Context, defs []appDef) map[string]bool {
 			continue
 		}
 		st := composeProjectStatus(ctx, d.ComposePath, composeProjectName(d.ComposePath))
-		res[d.Name] = st["running"] == true
+		res[d.Name] = runningCount(st) > 0
 	}
 	return res
+}
+
+// runningCount extracts the container count from a composeProjectStatus map,
+// tolerating the float64 that JSON round-trips an int into.
+func runningCount(st map[string]any) int {
+	switch v := st["running"].(type) {
+	case int:
+		return v
+	case float64:
+		return int(v)
+	case int64:
+		return int(v)
+	}
+	return 0
 }
 
 // composeProjectName derives a compose project name from a path (P2 convention).
