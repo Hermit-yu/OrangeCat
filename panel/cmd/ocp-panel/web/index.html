@@ -1112,8 +1112,26 @@ section .panel-card{margin-bottom:22px}
             </div>
           </div>
           <div class="panel-card">
+            <div class="card-title">两步验证（TOTP，真实）</div>
+            <div id="totpStatus" class="dim padtop-sm">正在读取两步验证状态…</div>
+            <div id="totpSetupArea" class="hidden padtop">
+              <div class="dim">1) 用验证器 App 扫描以下 otpauth 链接或手动输入密钥：</div>
+              <div id="totpOtpauth" class="detail-list"></div>
+              <div id="totpSecret" class="dim"></div>
+              <div class="padtop-sm">
+                <input id="totpCode" type="text" placeholder="输入 6 位验证码确认" class="sec-input">
+                <button id="btnTotpEnable" class="logout-button padtop-sm">启用两步验证</button>
+              </div>
+              <div id="totpMsg" class="dim padtop-sm"></div>
+            </div>
+            <div class="padtop-sm">
+              <button id="btnTotpSetup" class="logout-button">生成密钥</button>
+              <button id="btnTotpDisable" class="logout-button muted hidden">停用两步验证</button>
+            </div>
+          </div>
+          <div class="panel-card">
             <div class="card-title">其他设置</div>
-            <div class="dim">两步验证 / Passkey / 登录安全入口 / 备份恢复 / MCP / 版本更新：依赖未就绪（无真实实现，不编造）。</div>
+            <div class="dim">Passkey / 登录安全入口 / 备份恢复 / MCP / 版本更新：依赖未就绪（无真实实现，不编造）。两步验证见上方卡片，后端已实现。</div>
           </div>
         </section>
         <!-- P11：应用市场（真实 catalog + compose 安装/卸载） -->
@@ -2461,6 +2479,70 @@ if(btnSetPw)btnSetPw.addEventListener("click",async()=>{
     else{if(msg){msg.textContent=(j&&j.error)||"更新失败";msg.style.color="var(--danger)"}}
   }catch(e){if(msg){msg.textContent="请求失败："+e;msg.style.color="var(--danger)"}}
 });
+// ── 两步验证 TOTP（真实绑定 /api/totp/*，后端已完整实现）──
+const totpEl=id=>document.getElementById(id);
+function totpMsg(t,ok){const m=totpEl("totpMsg");if(m){m.textContent=t||"";m.style.color=ok?"var(--success)":"var(--danger)"}}
+async function loadTOTPStatus(){
+  const st=totpEl("totpStatus");if(!st)return;
+  try{
+    const r=await fetch(APP_BASE+"/api/totp/status",{credentials:"same-origin"});
+    const j=JSON.parse(await r.text());
+    if(j&&j.ok){
+      const setupArea=totpEl("totpSetupArea"),dis=totpEl("btnTotpDisable");
+      if(j.enabled){
+        st.innerHTML='<div class="detail-row"><span class="k">状态</span><span class="v stok">已启用（登录需输验证码）</span></div>';
+        if(setupArea)setupArea.classList.add("hidden");
+        if(dis)dis.classList.remove("hidden");
+      }else{
+        st.innerHTML='<div class="detail-row"><span class="k">状态</span><span class="v">未启用</span></div>';
+        if(setupArea)setupArea.classList.add("hidden");
+        if(dis)dis.classList.add("hidden");
+      }
+    }else{st.textContent="状态读取失败"}
+  }catch(e){st.textContent="状态读取失败："+e}
+}
+const btnTotpSetup=totpEl("btnTotpSetup");
+if(btnTotpSetup)btnTotpSetup.addEventListener("click",async()=>{
+  totpMsg("");
+  try{
+    const t=await postJSON("/api/totp/setup",{});
+    const j=JSON.parse(t);
+    if(j&&j.ok){
+      const oa=totpEl("totpOtpauth"),sc=totpEl("totpSecret"),area=totpEl("totpSetupArea");
+      if(oa)oa.innerHTML='<div class="detail-row"><span class="k">otpauth</span><span class="v">'+esc(j.otpauth_url||"")+'</span></div>';
+      if(sc)sc.textContent="密钥（手动输入用）："+(j.secret||"");
+      if(area)area.classList.remove("hidden");
+      totpMsg("密钥已生成，验证器扫码后输入 6 位码确认启用",true);
+    }else{totpMsg((j&&j.error)||"生成失败")}
+  }catch(e){totpMsg("请求失败："+e)}
+});
+const btnTotpEnable=totpEl("btnTotpEnable");
+if(btnTotpEnable)btnTotpEnable.addEventListener("click",async()=>{
+  totpMsg("");
+  const code=(totpEl("totpCode")||{}).value||"";
+  const sc=(totpEl("totpSecret")||{}).textContent||"";
+  const secret=sc.replace(/^[^：]*：/,"").trim();
+  if(code.length!==6||!secret){totpMsg("请先生成密钥并填 6 位验证码");return}
+  try{
+    const t=await postJSON("/api/totp/enable",{secret:secret,code:code});
+    const j=JSON.parse(t);
+    if(j&&j.ok){totpMsg("两步验证已启用，下次登录需输验证码",true);loadTOTPStatus()}
+    else{totpMsg((j&&j.error)||"启用失败（验证码无效？）")}
+  }catch(e){totpMsg("请求失败："+e)}
+});
+const btnTotpDisable=totpEl("btnTotpDisable");
+if(btnTotpDisable)btnTotpDisable.addEventListener("click",async()=>{
+  totpMsg("");
+  const code=prompt("输入当前 6 位验证码以停用两步验证")||"";
+  if(code.length!==6){totpMsg("需 6 位验证码");return}
+  try{
+    const t=await postJSON("/api/totp/disable",{code:code});
+    const j=JSON.parse(t);
+    if(j&&j.ok){totpMsg("已停用两步验证",true);loadTOTPStatus()}
+    else{totpMsg((j&&j.error)||"停用失败")}
+  }catch(e){totpMsg("请求失败："+e)}
+});
+loadTOTPStatus();
 // ── AI 助手（切片 A：真实绑定 agnes 端点） ──
 let aiEnabled=false,aiSending=false;
 // P9：多会话——每会话独立 history。aiSessions[i].messages 即该会话的 {role,content} 列表。
