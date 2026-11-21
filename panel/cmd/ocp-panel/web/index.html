@@ -513,16 +513,15 @@ section .panel-card{margin-bottom:22px}
   .topbar{padding:0 20px}
   .page-content{padding:20px}
 }
-/* ── 历史趋势页：哪吒面板风格（暗色科技 + 毛玻璃 + 霓虹渐变）── */
+/* ── 历史趋势页：与主题（曜石鎏金 Obsidian Gold）同款配色 ── */
 .nz-wrap{
-  --nz-bg:#0b0f1a;--nz-card:rgba(20,26,40,.72);--nz-card-solid:#141a28;
-  --nz-border:rgba(255,255,255,.08);--nz-text:#e6ecf5;--nz-muted:#8a93a8;
-  --nz-cpu:#38bdf8;--nz-cpumax:#a78bfa;--nz-mem:#34d399;--nz-memmax:#22d3ee;
-  --nz-disk:#fb7185;--nz-load:#fbbf24;
-  background:radial-gradient(1200px 400px at 20% -10%,rgba(56,189,248,.10),transparent 60%),
-             radial-gradient(900px 380px at 100% 0,rgba(167,139,250,.10),transparent 55%),
-             var(--nz-bg);
-  border:1px solid var(--nz-border);border-radius:18px;padding:18px;color:var(--nz-text);
+  --nz-card:var(--surface-raised);--nz-border:var(--border);
+  --nz-text:var(--text);--nz-muted:var(--text-muted);
+  --nz-cpu:var(--brand);--nz-cpumax:var(--violet);--nz-mem:var(--success);
+  --nz-memmax:var(--blue);--nz-disk:var(--danger);--nz-load:var(--warning);
+  --nz-active:#7c5818;
+  background:var(--surface);border:1px solid var(--border);border-radius:18px;
+  padding:18px;color:var(--nz-text);
 }
 .nz-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .nz-head__title{font-size:18px;font-weight:700;color:var(--nz-text);letter-spacing:.2px}
@@ -530,20 +529,21 @@ section .panel-card{margin-bottom:22px}
 .nz-toolbar{margin-bottom:14px}
 .nz-range{display:flex;gap:8px;flex-wrap:wrap}
 .nz-range .range-btn{
-  background:var(--nz-card);border:1px solid var(--nz-border);color:var(--nz-muted);
+  background:var(--surface-raised);border:1px solid var(--border);color:var(--text-secondary);
   font-size:12px;padding:7px 14px;border-radius:10px;cursor:pointer;transition:.15s;
-  backdrop-filter:blur(8px);
 }
-.nz-range .range-btn:hover{color:var(--nz-text);border-color:rgba(56,189,248,.35)}
+.nz-range .range-btn:hover{color:var(--brand);border-color:var(--brand-muted)}
 .nz-range .range-btn.is-active{
-  background:linear-gradient(135deg,rgba(56,189,248,.18),rgba(167,139,250,.18));
-  border-color:rgba(56,189,248,.45);color:#fff;box-shadow:0 0 0 1px rgba(56,189,248,.15),0 4px 16px rgba(56,189,248,.10);
+  background:var(--brand);border-color:var(--brand);color:var(--on-brand);
+  box-shadow:0 2px 10px rgba(124,88,24,.18);
 }
-.nz-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.nz-cards{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}
+@media (max-width:1100px){.nz-cards{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:560px){.nz-cards{grid-template-columns:repeat(2,1fr)}}
 .nz-card{
   position:relative;overflow:hidden;
   background:var(--nz-card);border:1px solid var(--nz-border);border-radius:14px;
-  padding:12px 14px;display:flex;flex-direction:column;gap:4px;backdrop-filter:blur(10px);
+  padding:12px 14px;display:flex;flex-direction:column;gap:4px;
 }
 .nz-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--nz-accent,transparent)}
 .nz-card span{font-size:11px;color:var(--nz-muted);letter-spacing:.3px}
@@ -555,10 +555,10 @@ section .panel-card{margin-bottom:22px}
 .nz-card--disk{--nz-accent:var(--nz-disk)}
 .nz-card--load{--nz-accent:var(--nz-load)}
 .nz-chart{
-  background:var(--nz-card);border:1px solid var(--nz-border);border-radius:16px;
-  padding:14px 16px 12px;backdrop-filter:blur(10px);overflow:auto;
+  background:var(--surface-raised);border:1px solid var(--border);border-radius:16px;
+  padding:14px 16px 12px;overflow:auto;
 }
-.nz-chart svg{display:block;background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));border-radius:10px}
+.nz-chart svg{display:block;background:var(--surface);border-radius:10px}
 .nz-chart .dim{color:var(--nz-muted);font-size:12px}
 </style>
 </head>
@@ -2385,21 +2385,21 @@ async function loadChart(){
   const path=(k)=>rows.map((p,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(p[k]).toFixed(1)).join(" ");
   // 网格线（4 条水平参考）
   let grid="";
-  for(let g=0;g<=4;g++){const gy=padT+(H-padT-padB)*g/4;grid+=`<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W-padR}" y2="${gy.toFixed(1)}" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`}
+  for(let g=0;g<=4;g++){const gy=padT+(H-padT-padB)*g/4;grid+=`<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W-padR}" y2="${gy.toFixed(1)}" stroke="var(--border)" stroke-width="1"/>`}
   const area=(k,c)=>`<path d="${path(k)} L ${x(rows.length-1).toFixed(1)} ${H-padB} L ${x(0).toFixed(1)} ${H-padB} Z" fill="url(#grad-${k})"/>`;
   svg.innerHTML=(`<defs>`
-    +`<linearGradient id="grad-cpu" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#38bdf8" stop-opacity=".28"/><stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/></linearGradient>`
-    +`<linearGradient id="grad-mem" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#34d399" stop-opacity=".24"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/></linearGradient>`
-    +`<linearGradient id="grad-disk" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fb7185" stop-opacity=".20"/><stop offset="100%" stop-color="#fb7185" stop-opacity="0"/></linearGradient>`
+    +`<linearGradient id="grad-cpu" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--nz-cpu)" stop-opacity=".24"/><stop offset="100%" stop-color="var(--nz-cpu)" stop-opacity="0"/></linearGradient>`
+    +`<linearGradient id="grad-mem" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--nz-mem)" stop-opacity=".20"/><stop offset="100%" stop-color="var(--nz-mem)" stop-opacity="0"/></linearGradient>`
+    +`<linearGradient id="grad-disk" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--nz-disk)" stop-opacity=".18"/><stop offset="100%" stop-color="var(--nz-disk)" stop-opacity="0"/></linearGradient>`
     +`</defs>`
     +grid
     +area("cpu")+area("mem")+area("disk")
-    +`<path d="${path("disk")}" fill="none" stroke="#fb7185" stroke-width="1.6" stroke-dasharray="5 3"/>`
-    +`<path d="${path("mem")}" fill="none" stroke="#34d399" stroke-width="1.8"/>`
-    +`<path d="${path("cpu")}" fill="none" stroke="#38bdf8" stroke-width="1.8"/>`
-    +`<text x="${padL}" y="11" fill="#8a93a8" font-size="10">CPU</text>`
-    +`<text x="${padL+38}" y="11" fill="#8a93a8" font-size="10">内存</text>`
-    +`<text x="${padL+76}" y="11" fill="#8a93a8" font-size="10">磁盘</text>`);
+    +`<path d="${path("disk")}" fill="none" stroke="var(--nz-disk)" stroke-width="1.6" stroke-dasharray="5 3"/>`
+    +`<path d="${path("mem")}" fill="none" stroke="var(--nz-mem)" stroke-width="1.8"/>`
+    +`<path d="${path("cpu")}" fill="none" stroke="var(--nz-cpu)" stroke-width="1.8"/>`
+    +`<text x="${padL}" y="11" fill="var(--text-muted)" font-size="10">CPU</text>`
+    +`<text x="${padL+38}" y="11" fill="var(--text-muted)" font-size="10">内存</text>`
+    +`<text x="${padL+76}" y="11" fill="var(--text-muted)" font-size="10">磁盘</text>`);
   const durMin=Math.round((rows[rows.length-1].ts-rows[0].ts)/60);
   chartInfo.textContent=`${rows.length} 个采样点 · 跨度 ${durMin} 分钟 · 数据源 ${level==="raw"?"实时采样":"小时聚合"}`;
   chartInfo.dataset.loaded="1";
