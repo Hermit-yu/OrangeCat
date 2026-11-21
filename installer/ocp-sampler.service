@@ -10,7 +10,7 @@ Group=ocp-panel
 SupplementaryGroups=ocp-agent
 StateDirectory=ocp
 ExecStart=/opt/OrangeCatPanel/bin/ocp-sampler -socket /run/ocp/agent.sock -db /var/lib/ocp/metrics.db -interval 30
-Restart=on-failure
+Restart=always
 RestartSec=5
 # read-only host access: no capabilities beyond default
 NoNewPrivileges=yes
