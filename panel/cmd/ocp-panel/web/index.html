@@ -225,6 +225,17 @@ body{background:var(--page-ambient);color:var(--text);font:14px/1.55 var(--font)
 .topbar__title{font-size:16px;font-weight:600;color:var(--text)}
 .topbar__title .dim{font-size:12px;font-weight:400;margin-left:8px}
 .topbar__actions{display:flex;align-items:center;gap:8px}
+/* 顶栏全局搜索（阶段 3）：跨模块快速跳转，下拉列出匹配视图 */
+.topsearch{position:relative;width:230px}
+.topsearch__input{width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-raised);color:var(--text);font-size:13px;padding:0 12px;font-family:var(--font)}
+.topsearch__input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-soft)}
+.topsearch__input::placeholder{color:var(--text-tertiary)}
+.topsearch__drop{position:absolute;top:40px;left:0;right:0;max-height:320px;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:6px;z-index:50}
+.topsearch__item{display:flex;align-items:center;gap:8px;width:100%;border:none;background:none;color:var(--text);font-size:13px;padding:8px 10px;border-radius:6px;cursor:pointer;text-align:left;font-family:var(--font)}
+.topsearch__item:hover,.topsearch__item.sel{background:var(--interaction-hover-surface)}
+.topsearch__item .ico{width:16px;height:16px;color:var(--brand);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.topsearch__item .ico svg{width:16px;height:16px}
+.topsearch__empty{font-size:12px;color:var(--text-tertiary);padding:8px 10px}
 /* P12：经典/桌面双模式 */
 .mode-btn{font-size:12px;padding:6px 12px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:6px;cursor:pointer}
 .mode-btn:hover{background:var(--surface2)}
@@ -783,6 +794,10 @@ section .panel-card{margin-bottom:22px}
     <header class="topbar">
       <div class="topbar__title" id="pageTitle"><span data-i18n="page_overview">概览</span><span class="dim" id="hostLabelTop"></span></div>
       <div class="topbar__actions">
+        <div class="topsearch" id="topSearchWrap">
+          <input id="topSearch" class="topsearch__input" type="text" placeholder="搜索模块… / Search" autocomplete="off" aria-label="全局搜索">
+          <div class="topsearch__drop hidden" id="topSearchDrop"></div>
+        </div>
         <button id="btnLang" class="lang-btn" title="切换语言 / Switch language" aria-label="切换语言">EN</button>
         <button id="btnMode" class="mode-btn" title="切换经典/桌面模式">桌面模式</button>
         <button id="btnRefresh" class="icon-button" title="刷新">⟳</button>
@@ -2856,6 +2871,66 @@ function ocpToggleStartMenu(force){
   btn.addEventListener("click",(e)=>{try{e.stopPropagation()}catch{}ocpToggleStartMenu()});
   const desk=document.getElementById("ocpDesktop");
   if(desk&&typeof desk.addEventListener==="function")desk.addEventListener("click",(e)=>{try{if(!e.target.closest||!e.target.closest(".ocp-startmenu"))ocpToggleStartMenu(false)}catch{}});
+})();
+// ── 顶栏全局搜索（阶段 3）：跨模块关键词跳转，中英文都能搜 ──
+const ocpSearchIdx=[
+  {sec:"secOverview",icon:"i-overview",zh:"概览 总览 仪表盘 监控",en:"overview dashboard monitor"},
+  {sec:"secChart",icon:"i-chart",zh:"历史趋势 图表 采样 曲线",en:"history trend chart graph"},
+  {sec:"secHealth",icon:"i-health",zh:"主机体检 体检 健康 报告",en:"health check report"},
+  {sec:"secNginx",icon:"i-nginx",zh:"nginx 站点 网站 域名 证书 反代",en:"nginx site website domain cert proxy"},
+  {sec:"secDocker",icon:"i-docker",zh:"docker 容器 镜像 网络 卷 compose",en:"docker container image network volume compose"},
+  {sec:"secApps",icon:"i-apps",zh:"应用市场 应用 安装 卸载",en:"apps market install uninstall"},
+  {sec:"secFs",icon:"i-fs",zh:"文件 文件管理 上传 下载 目录",en:"files file manager upload download"},
+  {sec:"secTerm",icon:"i-term",zh:"终端 命令 shell ssh",en:"terminal shell ssh command"},
+  {sec:"secProc",icon:"i-proc",zh:"进程 结束 占用",en:"process kill cpu"},
+  {sec:"secSvc",icon:"i-svc",zh:"服务 systemd 单元",en:"service systemd unit"},
+  {sec:"secDiag",icon:"i-diag",zh:"诊断 链路 ping traceroute 测试",en:"diagnostics ping traceroute test"},
+  {sec:"secNet",icon:"i-net",zh:"网卡 流量 网络 接口",en:"network traffic interface"},
+  {sec:"secCron",icon:"i-cron",zh:"定时任务 cron 计划 计划任务",en:"cron scheduled task"},
+  {sec:"secTask",icon:"i-task",zh:"后台任务 变更 审计 通知",en:"tasks audit notification"},
+  {sec:"secCluster",icon:"i-cluster",zh:"集群 节点 多主机",en:"cluster node host"},
+  {sec:"secVms",icon:"i-vms",zh:"虚拟机 vm",en:"virtual machine vm"},
+  {sec:"secAI",icon:"i-ai",zh:"ai 助手 聊天 模型",en:"ai assistant chat model"},
+  {sec:"secSystem",icon:"i-system",zh:"系统中心 系统 主机名 时区",en:"system center hostname timezone"},
+  {sec:"secSettings",icon:"i-settings",zh:"设置 主题 密码 背景两步验证 totp",en:"settings theme password background totp"}
+];
+let ocpSearchSel=0,ocpSearchItems=[];
+function ocpSearchGo(sec){document.getElementById("topSearchDrop").classList.add("hidden");const inp=document.getElementById("topSearch");if(inp)inp.value="";if(document.body.classList.contains("mode-desktop")&&typeof ocpOpenWindow==="function"){const v=sec.replace(/^sec/,"");const map={Chart:"chart",Health:"health",Nginx:"sites",Docker:"containers",Apps:"apps"};ocpOpenWindow(map[v]||v.toLowerCase())}else navTo(sec)}
+function ocpSearchRender(q){
+  const drop=document.getElementById("topSearchDrop");if(!drop)return;
+  const ql=q.trim().toLowerCase();
+  ocpSearchItems=ql?ocpSearchIdx.filter(e=>(e.zh+" "+e.en).toLowerCase().includes(ql)):ocpSearchIdx.slice(0,8);
+  ocpSearchSel=0;
+  if(!ocpSearchItems.length){drop.innerHTML='<div class="topsearch__empty">无匹配模块 / No match</div>';return}
+  drop.innerHTML=ocpSearchItems.map((e,i)=>{const lbl=ocpSearchLabel(e.sec);return '<button class="topsearch__item'+(i===0?" sel":"")+'" data-sec="'+e.sec+'"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#'+e.icon+'"></use></svg></span><span>'+esc(lbl)+'</span></button>'}).join("");
+  drop.querySelectorAll(".topsearch__item").forEach(b=>b.addEventListener("click",()=>ocpSearchGo(b.dataset.sec)));
+}
+// 搜索项标题：优先 OCP_I18N 当前语言 nav_ 键（侧栏同名，最可靠），回退英文 view 名
+function ocpSearchLabel(sec){
+  const navKey="nav_"+sec.replace(/^sec/,"").toLowerCase();
+  const t=typeof ocpT==="function"?ocpT(navKey):navKey;
+  if(t&&t!==navKey)return t;
+  return (ocpWinTitles[sec.replace(/^sec/,"").toLowerCase()]||sec.replace(/^sec/,""));
+}
+function ocpSearchHighlight(){
+  const drop=document.getElementById("topSearchDrop");if(!drop)return;
+  const items=drop.querySelectorAll(".topsearch__item");
+  items.forEach((b,i)=>b.classList.toggle("sel",i===ocpSearchSel));
+  if(items[ocpSearchSel])items[ocpSearchSel].scrollIntoView({block:"nearest"});
+}
+(function(){
+  const inp=document.getElementById("topSearch"),drop=document.getElementById("topSearchDrop");
+  if(!inp||!drop)return;
+  inp.addEventListener("input",()=>{ocpSearchRender(inp.value);drop.classList.remove("hidden")});
+  inp.addEventListener("focus",()=>{ocpSearchRender(inp.value);drop.classList.remove("hidden")});
+  inp.addEventListener("keydown",(e)=>{
+    if(drop.classList.contains("hidden")||!ocpSearchItems.length)return;
+    if(e.key==="ArrowDown"){ocpSearchSel=(ocpSearchSel+1)%ocpSearchItems.length;ocpSearchHighlight();try{e.preventDefault()}catch{}}
+    else if(e.key==="ArrowUp"){ocpSearchSel=(ocpSearchSel-1+ocpSearchItems.length)%ocpSearchItems.length;ocpSearchHighlight();try{e.preventDefault()}catch{}}
+    else if(e.key==="Enter"){const it=ocpSearchItems[ocpSearchSel];if(it)ocpSearchGo(it.sec)}
+    else if(e.key==="Escape"){drop.classList.add("hidden")}
+  });
+  if(typeof document.addEventListener==="function")document.addEventListener("click",(e)=>{try{if(!e.target.closest||!e.target.closest(".topsearch"))drop.classList.add("hidden")}catch{}});
 })();
 function ocpOpenWindow(view){
   if(!ocpWinViews.includes(view))return;
