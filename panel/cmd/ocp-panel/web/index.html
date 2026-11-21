@@ -256,6 +256,19 @@ body.mode-desktop .ocp-taskbar{display:flex}
 .ocp-desktop__docks{position:absolute;bottom:48px;left:50%;transform:translateX(-50%);display:flex;gap:8px;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .ocp-desktop__dock-item{width:44px;height:44px;border:none;border-radius:10px;background:var(--surface2);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .ocp-desktop__dock-item:hover{background:#c9a34a;color:#111}
+.ocp-desktop__dock-item svg{width:22px;height:22px;display:block}
+/* 任务栏开始按钮 + 开始菜单（阶段 2：对标 KPanel 桌面开始菜单） */
+.ocp-taskbar__start{width:34px;height:30px;border:1px solid var(--border);border-radius:6px;background:var(--surface-raised);color:var(--brand);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.ocp-taskbar__start:hover,.ocp-taskbar__start.active{background:var(--brand-soft);border-color:var(--brand)}
+.ocp-taskbar__start svg{width:16px;height:16px}
+.ocp-startmenu{position:absolute;bottom:48px;left:8px;width:300px;max-height:calc(100% - 56px);overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-md);padding:10px;z-index:110}
+.ocp-startmenu__title{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-tertiary);padding:4px 6px 8px}
+.ocp-startmenu__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.ocp-startmenu__item{border:1px solid var(--border);border-radius:8px;background:var(--surface-raised);color:var(--text);cursor:pointer;padding:10px 4px;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;min-height:56px;justify-content:center}
+.ocp-startmenu__item:hover{background:var(--interaction-hover-surface);border-color:var(--brand)}
+.ocp-startmenu__item .ico{width:20px;height:20px;color:var(--brand);display:flex;align-items:center;justify-content:center}
+.ocp-startmenu__item .ico svg{width:20px;height:20px}
+.ocp-startmenu__item span.lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .page-content{flex:1;padding:38px;max-width:1640px;width:100%;margin:0 auto}
 .page{display:flex;flex-direction:column;gap:22px}
 
@@ -1343,8 +1356,11 @@ section .panel-card{margin-bottom:22px}
 <div class="ocp-desktop" id="ocpDesktop">
   <div class="ocp-desktop__docks" id="ocpDocks"></div>
   <div id="ocpWindows"></div>
+  <div class="ocp-startmenu hidden" id="ocpStartMenu"></div>
 </div>
-<div class="ocp-taskbar" id="ocpTaskbar"></div>
+<div class="ocp-taskbar" id="ocpTaskbar">
+  <button class="ocp-taskbar__start" id="ocpStartBtn" title="开始 / Start"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg></button>
+</div>
 
 <script nonce="__OCP_CSP_NONCE__">
 const APP_BASE=location.pathname.startsWith("/orangecat/")?"/orangecat":"";
@@ -2790,6 +2806,8 @@ aiInit();
 let ocpMode=localStorage.getItem("ocpMode")||"classic";
 const ocpWinViews=["overview","containers","sites","files","tasks","terminal","net","proc","svc","health","diag","chart","ai","system","settings","apps","cluster","vms","cron"];
 const ocpWinTitles={overview:"概览",containers:"Docker 容器",sites:"Nginx 站点",files:"文件管理",tasks:"后台任务",terminal:"终端",net:"网卡流量",proc:"进程",svc:"服务",health:"主机体检",diag:"链路诊断",chart:"历史趋势",ai:"AI 助手",system:"系统中心",settings:"设置",apps:"应用市场",cluster:"集群",vms:"虚拟机",cron:"定时任务"};
+// 开始菜单图标：view -> 既有 svg sprite id（复用侧栏 sprite，不新增资源）
+const ocpWinIcons={overview:"i-overview",containers:"i-docker",sites:"i-nginx",files:"i-fs",tasks:"i-task",terminal:"i-term",net:"i-net",proc:"i-proc",svc:"i-svc",health:"i-health",diag:"i-diag",chart:"i-chart",ai:"i-ai",system:"i-system",settings:"i-settings",apps:"i-apps",cluster:"i-cluster",vms:"i-vms",cron:"i-cron"};
 let ocpOpenWins=[]; // {id, view, minimized}
 function ocpApplyMode(){
   document.body.classList.toggle("mode-desktop",ocpMode==="desktop");
@@ -2804,11 +2822,41 @@ function ocpRenderDocks(){
   ["overview","terminal","sites","files","apps","settings"].forEach(v=>{
     const b=document.createElement("button");
     b.className="ocp-desktop__dock-item";b.title=ocpWinTitles[v]||v;
-    b.innerHTML=(ocpWinTitles[v]||v).slice(0,1);
+    const ic=ocpWinIcons[v]||"i-overview";
+    b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#'+ic+'"></use></svg>';
     b.addEventListener("click",()=>ocpOpenWindow(v));
     docks.appendChild(b);
   });
 }
+// 开始菜单：列出全部桌面视图（图标 + 名称），点项开窗口，点外部/再点开始关闭
+function ocpRenderStartMenu(){
+  const m=document.getElementById("ocpStartMenu");if(!m)return;
+  m.innerHTML='<div class="ocp-startmenu__title">应用 / Apps</div><div class="ocp-startmenu__grid"></div>';
+  const grid=m.querySelector(".ocp-startmenu__grid");if(!grid)return;
+  ocpWinViews.forEach(v=>{
+    const b=document.createElement("button");
+    b.className="ocp-startmenu__item";b.title=ocpWinTitles[v]||v;
+    const ic=ocpWinIcons[v]||"i-overview";
+    b.innerHTML='<span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#'+ic+'"></use></svg></span><span class="lbl">'+esc(ocpWinTitles[v]||v)+'</span>';
+    b.addEventListener("click",()=>{ocpOpenWindow(v);ocpToggleStartMenu(false)});
+    grid.appendChild(b);
+  });
+}
+function ocpToggleStartMenu(force){
+  const m=document.getElementById("ocpStartMenu"),btn=document.getElementById("ocpStartBtn");
+  if(!m)return;
+  const show=typeof force==="boolean"?force:m.classList.contains("hidden");
+  m.classList.toggle("hidden",!show);
+  if(btn)btn.classList.toggle("active",show);
+  if(show&&typeof m.querySelector!=="function")return;
+  if(show)ocpRenderStartMenu();
+}
+(function(){
+  const btn=document.getElementById("ocpStartBtn");if(!btn)return;
+  btn.addEventListener("click",(e)=>{try{e.stopPropagation()}catch{}ocpToggleStartMenu()});
+  const desk=document.getElementById("ocpDesktop");
+  if(desk&&typeof desk.addEventListener==="function")desk.addEventListener("click",(e)=>{try{if(!e.target.closest||!e.target.closest(".ocp-startmenu"))ocpToggleStartMenu(false)}catch{}});
+})();
 function ocpOpenWindow(view){
   if(!ocpWinViews.includes(view))return;
   const existing=ocpOpenWins.find(w=>w.view===view);
